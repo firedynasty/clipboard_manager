@@ -47,7 +47,7 @@ function App() {
     }
   };
 
-  const copyToClipboard = async () => {
+  const copyToClipboard = useCallback(async () => {
     try {
       const text = await navigator.clipboard.readText();
       if (text.trim()) {
@@ -66,7 +66,7 @@ function App() {
       console.error('Error copying from clipboard:', error);
       alert('Failed to access clipboard. Please allow clipboard permissions.');
     }
-  };
+  }, [clipboardItems, nextId]);
 
   const clearAll = async () => {
     if (window.confirm('Are you sure you want to clear all clipboard items?')) {
@@ -121,7 +121,7 @@ function App() {
     return () => {
       document.removeEventListener('keydown', handleKeyPress);
     };
-  }, [escapeMode, copyLastItemToClipboard]);
+  }, [escapeMode, copyToClipboard, copyLastItemToClipboard]);
 
   if (isLoading) {
     return (
