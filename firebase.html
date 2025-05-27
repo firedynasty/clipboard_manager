@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>flashcards_with_firebase</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="./style.css">
+
+</head>
+<body>
+<!-- partial:index.partial.html -->
+<button id="convertTextAreaFrColumns" class="express1">Convert TextArea (from columns/Google Sheets)</button>
+&nbsp;&nbsp;
+<button id="makeTableFromSemicolon" class="express1">From SemiColons(delimiter)</button>
+<br>
+<br>
+
+<textarea id="myTextArea" rows="6" cols="108">难道;if
+故事的結尾，道出了社會的現實。誰都沒錯。因為人永遠都是自私的; people are selfish
+就因为我没友钱; not necessarily look for 
+但是一定要找自己喜欢的; need to be happy
+你五讲有小冷美；fifth tones: jiang is to speak, leng is cold
+卫生间; bathroom
+套房; suite with bathroom
+否则; otherwise
+理; communicate with people
+怀孕; pregnant
+气死; anger
+</textarea>
+<br>
+<select id="firebaseDropdownLoad">
+    <option value="vocabChinese" selected>vocabChinese</option>
+    </select>&nbsp;&nbsp;<button id="addFromFirebase"> Add from Firebase</button>
+<br>
+
+<br>
+<input type="text" id="valueInput" placeholder="Enter which key to save to">&nbsp;&nbsp;<select id="firebaseDropdownSave">
+    <option value="vocabChinese" selected>vocabChinese</option>
+    
+</select>&nbsp;&nbsp;<button id="saveFirebase">Save TextArea Value to FireBase</button>
+
+<br>
+<select id="keysFromImageDictionary">
+	<option value="">keys From Key</option></select>&nbsp;&nbsp;<button id="switchDropDown">Switch Dropdown </button>
+<p id="keyValueDisplay"></p>
+<table id="my-table"></table>
+<!-- partial -->
+  <script src='https://code.jquery.com/jquery-2.2.4.min.js'></script>
+<script src='https://cdn.rawgit.com/lhartikk/simple-chess-ai/master/lib/js/chess.js'></script>
+<script src='https://chessboardjs.com/js/chessboard.js'></script>
+<script>
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+import { getDatabase, ref, onValue, set, get } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
+
+// Initialize Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyB0_4AT0jzRoSeV5jK4rN4Ah7BTKKTl78I",
+  authDomain: "linked-in-creators.firebaseapp.com",
+  databaseURL: "https://linked-in-creators-default-rtdb.firebaseio.com",
+  projectId: "linked-in-creators",
+  storageBucket: "linked-in-creators.appspot.com",
+  messagingSenderId: "282570385061",
+  appId: "1:282570385061:web:24fcf17921e99540984f4c",
+  measurementId: "G-5G6JG8VERG"
+};
+
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
+
+
+
+var convertTextAreaFrColumns = document.getElementById('convertTextAreaFrColumns');
+convertTextAreaFrColumns.addEventListener('click', function() {
+    console.log('convert text area clicked');
+    var textarea = document.querySelector("#myTextArea");
+    var arr = textarea.value.trim();
+
+    // Clear the existing table
+    document.getElementById('my-table').innerHTML = '';
+
+    // Get the table element
+    var table = document.getElementById('my-table');
+
+    // Split the input string into rows
+    var rows = arr.split('\n');
+
+    // Iterate over each row
+    for (var i = 0; i < rows.length; i++) {
+      // Split the row into cells based on both '\n' and '\t'
+      var cells = rows[i].split(/\n|\t/);
+
+      // Create a new row
+      var row = document.createElement('tr');
+
+      // Iterate over each cell in the row
+      for (var j = 0; j < cells.length; j++) {
+        // Create a new cell
+        var cell = document.createElement('td');
+
+        // Set the cell content to the current cell string
+        cell.textContent = cells[j];
+        cell.style.border = '1px solid black';
+
+        // Append the cell to the row
+        row.appendChild(cell);
+      }
+
+      // Append the row to the table
+      table.appendChild(row);
+    }
+    console.log("'" + document.getElementById('my-table').innerHTML + "'");
+  
+
+});
+
+
+var makeTableFromSemicolon = document.getElementById('makeTableFromSemicolon');
+makeTableFromSemicolon.addEventListener('click', function() {
+    console.log('convert text area clicked');
+    var textarea = document.querySelector("#myTextArea");
+    var arr = textarea.value.trim();
+
+    // Clear the existing table
+    document.getElementById('my-table').innerHTML = '';
+
+    // Get the table element
+    var table = document.getElementById('my-table');
+
+    // Split the input string into rows
+    var rows = arr.split('\n');
+
+    // Iterate over each row
+    for (var i = 0; i < rows.length; i++) {
+      // Split the row into cells based on both '\n' and '\t'
+      var cells = rows[i].split(/\n|;/);
+
+
+      // Create a new row
+      var row = document.createElement('tr');
+
+      // Iterate over each cell in the row
+      for (var j = 0; j < cells.length; j++) {
+        // Create a new cell
+        var cell = document.createElement('td');
+
+        // Set the cell content to the current cell string
+        cell.textContent = cells[j];
+        cell.style.border = '1px solid black';
+
+        // Append the cell to the row
+        row.appendChild(cell);
+      }
+
+      // Append the row to the table
+      table.appendChild(row);
+    }
+    console.log("'" + document.getElementById('my-table').innerHTML + "'");
+
+});
+
+
+
+
+
+document.getElementById('saveFirebase').addEventListener('click', function() {
+    // Get the custom key from the input field
+    const customKey = document.getElementById('valueInput').value.trim();
+    
+    if (customKey === '') {
+        alert('Please enter a valid key.');
+        return;
+    }
+
+    // Get the dropdown element
+    const firebaseDropdownSave = document.getElementById('firebaseDropdownSave');
+
+    // Get the selected value
+    const firebaseName = firebaseDropdownSave.value;
+    
+    
+    // Reference to the flashcardsDatabase node
+    const flashcardsRef = ref(database, firebaseName + '/');
+
+    
+    // Check if the key already exists (optional, you can skip this if you don't need to check)
+    get(flashcardsRef).then((snapshot) => {
+        if (snapshot.exists()) {
+            const flashcardsDictionary = snapshot.val();
+            
+            if (flashcardsDictionary[customKey]) {
+                if (!confirm('This key already exists. Do you want to overwrite it?')) {
+                    return; // If user does not want to overwrite, exit the function
+                }
+            }
+        }
+        
+        const specificMovieRef1 = ref(database, firebaseName + '/' + customKey);
+        
+        // Create a reference including the custom key
+        
+        // Set the value at the specific reference (key)
+        set(specificMovieRef1, document.getElementById('myTextArea').value)
+            .then(() => {
+                console.log('Data for customKey set successfully');
+                const saveButton = document.getElementById('saveFirebase');
+
+                // Change the button text color to yellow
+                saveButton.style.color = 'yellow';
+
+                // Revert the button text color back to black after 5 seconds (5000 milliseconds)
+                setTimeout(() => {
+                    saveButton.style.color = 'black';
+                }, 5000);
+            })
+            .catch((error) => {
+                console.error('Error setting data for customKey: ', error);
+            });
+    }).catch((error) => {
+        console.error("Error retrieving data:", error);
+    });
+});
+
+
+var imageDictionary = {
+    "hello": "world",
+    "test" : "故事的結尾，道出了社會的現實。誰都沒錯。因為人永遠都是自私的; people are selfish\n就因为我没友钱; not necessarily look for \n但是一定要找自己喜欢的; need to be happy\n你五讲有小冷美；fifth tones: jiang is to speak, leng is cold\n卫生间; bathroom\n套房; suite with bathroom\n否则; otherwise\n理; communicate with people\n怀孕; pregnant\n气死; anger"
+};
+
+// Set currentIndex outside of scrollThroughKeys
+let currentIndex = 0;
+let keys = Object.keys(imageDictionary);
+
+// Adding Firebase integration
+document.getElementById('addFromFirebase').addEventListener('click', function() {
+    // Get the dropdown element
+    const firebaseDropdownLoad = document.getElementById('firebaseDropdownLoad');
+
+    // Get the selected value
+    const firebaseName = firebaseDropdownLoad.value;
+
+    // Reference to the selected Firebase node
+    const dbRef = ref(database, firebaseName + '/');
+    get(dbRef).then((snapshot) => {
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            
+            // Iterate through the data and add it to the imageDictionary
+            Object.keys(data).forEach(key => {
+                imageDictionary[key] = data[key];
+            });
+            console.log(imageDictionary);
+      keys = Object.keys(imageDictionary);
+      // Assume imageDictionary exists in the context
+      setTimeout(function() {
+          populateSelectWithKeys(imageDictionary, "keysFromImageDictionary");
+      }, 1000);
+            alert('Entries added from Firebase!');  
+        } else {
+            alert('No data available in Firebase.');
+        }
+    }).catch((error) => {
+        console.error('Error fetching data from Firebase: ', error);
+    });
+
+});
+
+
+function populateTableFromKeyContent(key) {
+    // Get the value from imageDictionary based on the provided key
+    const content = imageDictionary[key];
+
+    // Clear the existing table
+    document.getElementById('my-table').innerHTML = '';
+
+    // Get the table element
+    var table = document.getElementById('my-table');
+
+    // Split the value (content) string into rows
+    var rows = content.split('\n');
+
+    // Iterate over each row
+    for (var i = 0; i < rows.length; i++) {
+        // Split the row into cells based on both '\n' and ';'
+        var cells = rows[i].split(/\n|;/);
+
+        // Create a new row
+        var row = document.createElement('tr');
+
+        // Iterate over each cell in the row
+        for (var j = 0; j < cells.length; j++) {
+            // Create a new cell
+            var cell = document.createElement('td');
+
+            // Set the cell content to the current cell string
+            cell.textContent = cells[j];
+            cell.style.border = '1px solid black';
+
+            // Append the cell to the row
+            row.appendChild(cell);
+        }
+
+        // Append the row to the table
+        table.appendChild(row);
+    }
+    console.log("'" + document.getElementById('my-table').innerHTML + "'");
+}
+
+
+    // Function to move to the next key
+    function nextKey() {
+        currentIndex = (currentIndex + 1) % keys.length;
+    console.log(currentIndex)
+        displayKeyAndValue(keys[currentIndex]);
+    populateTableFromKeyContent(keys[currentIndex]);
+
+    }
+
+    function prevKey() {
+        if (currentIndex > 0) {
+            currentIndex--;
+        } 
+        displayKeyAndValue(keys[currentIndex]);
+    populateTableFromKeyContent(keys[currentIndex]);
+
+    }
+  
+
+    // Function to display the current key and value
+    function displayKeyAndValue(key) {
+        const value = imageDictionary[key];
+        const displayElement = document.getElementById('keyValueDisplay');
+        const textAreaElement = document.getElementById('myTextArea');
+
+        displayElement.textContent = `Key: ${key}`;
+        textAreaElement.value = value; // Set the value of the textarea
+    }
+
+
+
+function populateSelectWithKeys(dictionary, selectElementId) {
+    var selectElement = document.getElementById(selectElementId);
+
+    // Clear any previous options in the select (except the first placeholder)
+    while (selectElement.options.length > 1) {
+        selectElement.remove(1);
+    }
+
+    // Iterate over the keys of the dictionary and create <option> elements
+    Object.keys(dictionary).forEach(function(key) {
+        var option = document.createElement('option');
+        option.value = key;  // Set option value as the key
+        option.text = key;   // Set the visible text of the option
+        selectElement.add(option);  // Add the option to the select element
+    });
+}
+
+// Assume imageDictionary exists in the context
+setTimeout(function() {
+    populateSelectWithKeys(imageDictionary, "keysFromImageDictionary");
+}, 1000);
+
+
+function switchDropDownFromTextArea() {
+  var textAreaDropdown = document.getElementById('keysFromImageDictionary');
+
+  // Get all the <option> elements from the dropdown
+  var options = textAreaDropdown.getElementsByTagName('option');
+
+  // Array to store values of valid options (excluding any empty or invalid values)
+ var values = [];
+for (var i = 0; i < options.length; i++) {
+  if (options[i].value !== "") {
+    values.push(options[i].value);
+  }
+}
+
+  // Get the current selected value's index in the valid values array
+  var currentIndex = values.indexOf(textAreaDropdown.value);
+
+  // Calculate the next index by incrementing, and looping back to the start if needed
+  var nextIndex = (currentIndex + 1) % values.length;
+
+  // Set the dropdown value to the next valid option
+  textAreaDropdown.value = values[nextIndex];
+
+  // Set the board position using the selected value
+  if (textAreaDropdown.value) {
+    //board.position(textAreaDropdown.value);
+    displayKeyAndValue(textAreaDropdown.value);
+    populateTableFromKeyContent(textAreaDropdown.value);
+    //console.log('Board position set to:', textAreaDropdown.value);
+  }
+}
+
+var switchDropDownButton = document.getElementById('switchDropDown');
+switchDropDownButton.addEventListener('click', function() {
+  switchDropDownFromTextArea();
+
+});
+
+
+var keysFromImageDictionaryDropdown = document.getElementById('keysFromImageDictionary');
+
+// Add an event listener for when the dropdown value changes
+keysFromImageDictionaryDropdown.addEventListener('change', function() {
+    // Get the selected option value
+    var selectedValue = keysFromImageDictionaryDropdown.options[keysFromImageDictionaryDropdown.selectedIndex].value;
+    
+    // Log or return the selected value (you can also store it in a variable)
+    console.log("Selected value:", selectedValue);
+    
+    // If you want to return it as a variable, you can store it in a global variable
+    var dropdownValue = selectedValue;  // This variable holds the selected value
+  displayKeyAndValue(selectedValue);
+    populateTableFromKeyContent(selectedValue);
+  
+});
+</script>
+
+</body>
+</html>

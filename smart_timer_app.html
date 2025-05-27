@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Timer</title>
+  <link rel="stylesheet" href="https://public.codepenassets.com/css/normalize-5.0.0.min.css">
+
+
+</head>
+<body>
+<!-- partial:index.partial.html -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Timer - Standalone Version</title>
+    <meta name="description" content="A simple, elegant timer for tracking work sessions">
+</head>
+<!-- partial -->
+  <script> 
+// Smart Timer App - Enhanced Version with Row Insertion
+const SmartTimerApp = {
+  // State variables
+  isRunning: false,
+  elapsedTime: 0,
+  sessions: [],
+  currentSessionStart: null,
+  isPaused: false,
+  pausedTime: 0,
+  intervalId: null,
+  nextId: 1,
+
+  // Initialize the app
+  init() {
+    this.loadSessions();
+    this.renderApp();
+    this.setupEventListeners();
+    this.startTimerLoop();
+  },
+
+  // Format time as HH:MM:SS
+  formatTime(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  },
+
+  // Format date as MM/DD/YYYY HH:MM:SS
+  formatDateTime(date) {
+    return date.toLocaleString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  },
+
+  // Get current date/time for new manual entries
+  getCurrentDateTime() {
+    return this.formatDateTime(new Date());
+  },
+
+  // Timer functions
+  startTimer() {
+    this.currentSessionStart = new Date();
+    this.isRunning = true;
+    this.isPaused = false;
+    this.elapsedTime = 0;
+    this.pausedTime = 0;
+    this.updateDisplay();
+  },
+
+  pauseTimer() {
+    this.isRunning = false;
+    this.isPaused = true;
+    this.pausedTime = this.elapsedTime;
+    this.updateDisplay();
+  },
+
+  resumeTimer() {
+    this.isRunning = true;
+    this.isPaused = false;
+    this.elapsedTime = this.pausedTime;
+    this.updateDisplay();
+  },
+
+  stopTimer() {
+    if (this.currentSessionStart) {
+      const now = new Date();
+      const totalDuration = this.isPaused ? this.pausedTime : this.elapsedTime;
+      
+      const newSession = {
+        id: this.getNextId(),
+        start: this.formatDateTime(this.currentSessionStart),
+        stop: this.formatDateTime(now),
+        duration: this.formatTime(totalDuration),
+        comments: '',
+        isManual: false
+      };
+
+      this.sessions.push(newSession);
+      this.saveSessions();
+      this.currentSessionStart = null;
+    }
+    this.isRunning = false;
+    this.isPaused = false;
+    this.elapsedTime = 0;
+    this.pausedTime = 0;
+    this.updateDisplay();
+    this.renderSessions();
+    
+    // Scroll to sessions table
+    setTimeout(() => {
+      const sessionsElement = document.querySelector('.sessions-section');
+      if (sessionsElement) {
+        sessionsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  },
+
+  // Calculate total duration from all sessions
+  calculateTotalDuration() {
+    if (this.sessions.length === 0) return '00:00:00';
+    
+    let totalSeconds = 0;
+    
+    this.sessions.forEach(session => {
+      if (session.duration && session.duration !== 'Invalid: Stop before Start' && session.duration !== 'Invalid Date Format') {
+        const parts = session.duration.split(':');
+        if (parts.length === 3) {
+          const hours = parseInt(parts[0]) || 0;
+          const minutes = parseInt(parts[1]) || 0;
+          const seconds = parseInt(parts[2]) || 0;
+          totalSeconds += (hours * 3600) + (minutes * 60) + seconds;
+        }
+      }
+    });
+    
+    return this.formatTime(totalSeconds);
+  },
+
+  // Get next unique ID
+  getNextId() {
+    const maxId = this.sessions.length > 0 ? Math.max(...this.sessions.map(s => s.id)) : 0;
+    return Math.max(maxId + 1, this.nextId++);
+  },
+  addRowBefore(targetId) {
+    const targetIndex = this.sessions.findIndex(s => s.id === targetId);
+    const currentTime = this.getCurrentDateTime();
+    
+    const newSession = {
+      id: this.getNextId(),
+      start: currentTime,
+      stop: currentTime,
+      duration: '00:00:00',
+      comments: '',
+      isManual: true
+    };
+
+    if (targetIndex !== -1) {
+      this.sessions.splice(targetIndex, 0, newSession);
+    } else {
+      this.sessions.unshift(newSession);
+    }
+    
+    this.saveSessions();
+    this.renderSessions();
+  },
+
+  addRowAfter(targetId) {
+    const targetIndex = this.sessions.findIndex(s => s.id === targetId);
+    const currentTime = this.getCurrentDateTime();
+    
+    const newSession = {
+      id: this.getNextId(),
+      start: currentTime,
+      stop: currentTime,
+      duration: '00:00:00',
+      comments: '',
+      isManual: true
+    };
+
+    if (targetIndex !== -1) {
+      this.sessions.splice(targetIndex + 1, 0, newSession);
+    } else {
+      this.sessions.push(newSession);
+    }
+    
+    this.saveSessions();
+    this.renderSessions();
+  },
+
+  addRowAtEnd() {
+    const currentTime = this.getCurrentDateTime();
+    
+    const newSession = {
+      id: this.getNextId(),
+      start: currentTime,
+      stop: currentTime,
+      duration: '00:00:00',
+      comments: '',
+      isManual: true
+    };
+
+    this.sessions.push(newSession);
+    this.saveSessions();
+    this.renderSessions();
+  },
+
+  // Timer loop
+  startTimerLoop() {
+    setInterval(() => {
+      if (this.isRunning) {
+        this.elapsedTime++;
+        this.updateDisplay();
+      }
+    }, 1000);
+  },
+
+  // Update timer display
+  updateDisplay() {
+    const timeDisplay = document.getElementById('time-display');
+    const statusDisplay = document.getElementById('status-display');
+    const buttonsContainer = document.getElementById('buttons-container');
+    const keyboardHint = document.getElementById('keyboard-hint');
+
+    if (timeDisplay) {
+      timeDisplay.textContent = this.formatTime(this.isPaused ? this.pausedTime : this.elapsedTime);
+    }
+
+    if (statusDisplay) {
+      if (this.isRunning) {
+        statusDisplay.innerHTML = '<span style="color: #059669; font-weight: 600;">Timer is running...</span>';
+      } else if (this.isPaused) {
+        statusDisplay.innerHTML = `<span style="color: #d97706; font-weight: 600;">Timer is paused - ${this.formatTime(this.pausedTime)}</span>`;
+      } else {
+        statusDisplay.innerHTML = '';
+      }
+    }
+
+    if (buttonsContainer) {
+      buttonsContainer.innerHTML = this.getButtonsHTML();
+    }
+
+    if (keyboardHint) {
+      const action = this.isRunning ? 'pause' : this.isPaused ? 'resume' : 'start';
+      const totalDuration = this.calculateTotalDuration();
+      keyboardHint.innerHTML = `
+        <div>Press <kbd style="padding: 4px 8px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; font-family: monospace; font-size: 12px;">Escape</kbd> to ${action} timer</div>
+        <div style="margin-top: 8px; font-weight: 600; color: #374151;">Total Duration: <span style="color: #2563eb; font-family: 'Monaco', 'Consolas', monospace; font-size: 16px;">${totalDuration}</span></div>
+      `;
+    }
+  },
+
+  // Get buttons HTML based on current state
+  getButtonsHTML() {
+    if (!this.isRunning && !this.isPaused) {
+      return `
+        <button onclick="SmartTimerApp.startTimer()" class="timer-btn start-btn">
+          ▶ Start
+        </button>
+      `;
+    } else if (this.isPaused) {
+      return `
+        <button onclick="SmartTimerApp.resumeTimer()" class="timer-btn start-btn">
+          ▶ Resume
+        </button>
+        <button onclick="SmartTimerApp.stopTimer()" class="timer-btn stop-btn">
+          ⏹ Stop
+        </button>
+      `;
+    } else {
+      return `
+        <button onclick="SmartTimerApp.pauseTimer()" class="timer-btn pause-btn">
+          ⏸ Pause
+        </button>
+        <button onclick="SmartTimerApp.stopTimer()" class="timer-btn stop-btn">
+          ⏹ Stop
+        </button>
+      `;
+    }
+  },
+
+  // Session management
+  updateSession(id, field, value) {
+    const session = this.sessions.find(s => s.id === id);
+    if (session) {
+      if (field === 'start' || field === 'stop') {
+        // Convert datetime-local input to formatted string
+        const date = new Date(value);
+        if (!isNaN(date.getTime())) {
+          session[field] = this.formatDateTime(date);
+        }
+      } else {
+        session[field] = value;
+      }
+      
+      // If updating start or stop time, recalculate duration for manual entries
+      if ((field === 'start' || field === 'stop') && session.isManual) {
+        this.calculateDurationForSession(session);
+      }
+      
+      this.saveSessions();
+      this.renderSessions(); // Re-render to show updated duration
+    }
+  },
+
+  // Calculate duration for a specific session
+  calculateDurationForSession(session) {
+    try {
+      const startDate = new Date(session.start);
+      const stopDate = new Date(session.stop);
+      if (!isNaN(startDate.getTime()) && !isNaN(stopDate.getTime()) && stopDate >= startDate) {
+        const durationSeconds = Math.floor((stopDate - startDate) / 1000);
+        session.duration = this.formatTime(durationSeconds);
+      } else if (stopDate < startDate) {
+        session.duration = 'Invalid: Stop before Start';
+      }
+    } catch (e) {
+      session.duration = 'Invalid Date Format';
+    }
+  },
+
+  // Cement session as if it was timer-generated
+  cementSession(id) {
+    const session = this.sessions.find(s => s.id === id);
+    if (session) {
+      // Ensure dates are valid and calculate final duration
+      this.calculateDurationForSession(session);
+      
+      // Mark as non-manual (timer-generated)
+      session.isManual = false;
+      
+      this.saveSessions();
+      this.renderSessions();
+    }
+  },
+
+  // Cement all manual sessions
+  cementAllSessions() {
+    const manualSessions = this.sessions.filter(s => s.isManual);
+    
+    if (manualSessions.length === 0) {
+      alert('No manual entries to cement.');
+      return;
+    }
+    
+    manualSessions.forEach(session => {
+      // Calculate final duration
+      this.calculateDurationForSession(session);
+      // Mark as non-manual (timer-generated)
+      session.isManual = false;
+    });
+    
+    this.saveSessions();
+    this.renderSessions();
+    alert(`${manualSessions.length} manual entries have been cemented as timer entries!`);
+  },
+
+  deleteSession(id) {
+    this.sessions = this.sessions.filter(s => s.id !== id);
+    this.saveSessions();
+    this.renderSessions();
+  },
+
+  clearAllSessions() {
+    if (confirm('Are you sure you want to clear all sessions?')) {
+      this.sessions = [];
+      this.saveSessions();
+      this.renderSessions();
+    }
+  },
+
+  // Local storage
+  saveSessions() {
+    try {
+      localStorage.setItem('smart-timer-sessions', JSON.stringify(this.sessions));
+    } catch (error) {
+      console.error('Error saving sessions:', error);
+    }
+  },
+
+  loadSessions() {
+    try {
+      const saved = localStorage.getItem('smart-timer-sessions');
+      this.sessions = saved ? JSON.parse(saved) : [];
+      // Ensure all sessions have required properties
+      this.sessions = this.sessions.map(session => ({
+        ...session,
+        isManual: session.isManual || false
+      }));
+    } catch (error) {
+      console.error('Error loading sessions:', error);
+      this.sessions = [];
+    }
+  },
+
+  // Export functions
+  exportToCSV() {
+    if (this.sessions.length === 0) {
+      alert('No sessions to export.');
+      return;
+    }
+
+    const headers = ['Start', 'Stop', 'Duration', 'Comments'];
+    const rows = this.sessions.map(session => [
+      session.start,
+      session.stop,
+      session.duration,
+      session.comments || ''
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(field => `"${field}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `timer-sessions-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  },
+
+  copyToClipboard() {
+    if (this.sessions.length === 0) {
+      alert('No sessions to copy.');
+      return;
+    }
+
+    const headers = ['Start', 'Stop', 'Duration', 'Comments'];
+    const rows = this.sessions.map(session => [
+      session.start,
+      session.stop,
+      session.duration,
+      session.comments || ''
+    ]);
+
+    const textContent = [
+      headers.join('\t'),
+      ...rows.map(row => row.join('\t'))
+    ].join('\n');
+
+    navigator.clipboard.writeText(textContent).then(() => {
+      alert('Sessions copied to clipboard! You can paste this into Google Sheets.');
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+      alert('Failed to copy to clipboard.');
+    });
+  },
+
+  // Event listeners
+  setupEventListeners() {
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (this.isRunning) {
+          this.pauseTimer();
+        } else if (this.isPaused) {
+          this.resumeTimer();
+        } else {
+          this.startTimer();
+        }
+      }
+    });
+  },
+
+  // Render sessions table
+  renderSessions() {
+    const container = document.getElementById('sessions-container');
+    if (!container) return;
+
+    if (this.sessions.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 48px 0; color: #6b7280;">
+          <p style="font-size: 18px; margin-bottom: 8px;">No sessions recorded</p>
+          <p style="font-size: 14px; margin-bottom: 16px;">Start a timer to begin tracking your work sessions</p>
+          <button onclick="SmartTimerApp.addRowAtEnd()" class="action-btn">
+            ➕ Add Manual Entry
+          </button>
+        </div>
+      `;
+      // Update total duration display even when no sessions
+      this.updateDisplay();
+      return;
+    }
+
+    const actionsHTML = `
+      <div style="display: flex; gap: 12px; margin-bottom: 16px; justify-content: space-between; align-items: center;">
+        <button onclick="SmartTimerApp.addRowAtEnd()" class="action-btn">
+          ➕ Add New Entry
+        </button>
+        <div style="display: flex; gap: 12px;">
+          <button onclick="SmartTimerApp.cementAllSessions()" class="action-btn cement-all-btn">
+            🔒 Cement All
+          </button>
+          <button onclick="SmartTimerApp.copyToClipboard()" class="action-btn">
+            📋 Copy to Clipboard
+          </button>
+          <button onclick="SmartTimerApp.exportToCSV()" class="action-btn">
+            📁 Export CSV
+          </button>
+          <button onclick="SmartTimerApp.clearAllSessions()" class="action-btn danger">
+            🗑 Clear All
+          </button>
+        </div>
+      </div>
+    `;
+
+    const tableHTML = `
+      <table class="sessions-table">
+        <thead>
+          <tr>
+            <th>Start</th>
+            <th>Stop</th>
+            <th>Duration</th>
+            <th>Comments</th>
+            <th>Add Row</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${this.sessions.map((session, index) => `
+            <tr ${session.isManual ? 'class="manual-row"' : ''}>
+              <td class="time-cell">
+                ${session.isManual ? `
+                  <input 
+                    type="datetime-local" 
+                    value="${this.dateTimeToInput(session.start)}"
+                    onchange="SmartTimerApp.updateSession(${session.id}, 'start', this.value)"
+                    class="datetime-input"
+                    step="1"
+                  />
+                ` : session.start}
+              </td>
+              <td class="time-cell">
+                ${session.isManual ? `
+                  <input 
+                    type="datetime-local" 
+                    value="${this.dateTimeToInput(session.stop)}"
+                    onchange="SmartTimerApp.updateSession(${session.id}, 'stop', this.value)"
+                    class="datetime-input"
+                    step="1"
+                  />
+                ` : session.stop}
+              </td>
+              <td class="duration-cell">
+                <span class="duration-display">${session.duration}</span>
+                ${session.isManual ? `
+                  <button
+                    onclick="SmartTimerApp.cementSession(${session.id})"
+                    class="cement-btn"
+                    title="Cement as timer entry"
+                  >
+                    🔒
+                  </button>
+                ` : ''}
+              </td>
+              <td>
+                <input
+                  type="text"
+                  value="${session.comments}"
+                  onchange="SmartTimerApp.updateSession(${session.id}, 'comments', this.value)"
+                  placeholder="Add comments..."
+                  class="comment-input"
+                />
+              </td>
+              <td class="add-row-cell">
+                <div class="add-row-buttons">
+                  <button
+                    onclick="SmartTimerApp.addRowBefore(${session.id})"
+                    class="add-row-btn"
+                    title="Add row before this one"
+                  >
+                    ⬆️
+                  </button>
+                  <button
+                    onclick="SmartTimerApp.addRowAfter(${session.id})"
+                    class="add-row-btn"
+                    title="Add row after this one"
+                  >
+                    ⬇️
+                  </button>
+                </div>
+              </td>
+              <td class="action-cell">
+                <button
+                  onclick="SmartTimerApp.deleteSession(${session.id})"
+                  class="delete-btn"
+                  title="Delete session"
+                >
+                  🗑
+                </button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+
+    container.innerHTML = actionsHTML + tableHTML;
+    
+    // Update total duration display after rendering sessions
+    this.updateDisplay();
+  },
+
+  // Convert datetime string to input format
+  dateTimeToInput(dateStr) {
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return '';
+      
+      // Format as YYYY-MM-DDTHH:MM for datetime-local input
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    } catch (e) {
+      return '';
+    }
+  },
+
+  // Render the complete app
+  renderApp() {
+    document.body.innerHTML = `
+      <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%);
+          min-height: 100vh;
+          padding: 20px;
+        }
+        
+        .container {
+          max-width: 1400px;
+          margin: 0 auto;
+        }
+        
+        .header {
+          text-align: center;
+          margin-bottom: 32px;
+        }
+        
+        .header h1 {
+          font-size: 36px;
+          font-weight: 700;
+          color: #1f2937;
+          margin-bottom: 8px;
+        }
+        
+        .header p {
+          color: #6b7280;
+          font-size: 16px;
+        }
+        
+        .timer-display {
+          background: white;
+          border-radius: 16px;
+          box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+          padding: 48px;
+          margin-bottom: 32px;
+          text-align: center;
+        }
+        
+        #time-display {
+          font-size: 64px;
+          font-family: 'Monaco', 'Consolas', monospace;
+          font-weight: 700;
+          color: #1f2937;
+          margin-bottom: 24px;
+        }
+        
+        #buttons-container {
+          display: flex;
+          justify-content: center;
+          gap: 16px;
+          margin-bottom: 16px;
+        }
+        
+        .timer-btn {
+          padding: 16px 32px;
+          border: none;
+          border-radius: 12px;
+          font-size: 16px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        
+        .start-btn {
+          background: #10b981;
+          color: white;
+        }
+        
+        .start-btn:hover {
+          background: #059669;
+          transform: translateY(-1px);
+        }
+        
+        .pause-btn {
+          background: #f59e0b;
+          color: white;
+        }
+        
+        .pause-btn:hover {
+          background: #d97706;
+          transform: translateY(-1px);
+        }
+        
+        .stop-btn {
+          background: #ef4444;
+          color: white;
+        }
+        
+        .stop-btn:hover {
+          background: #dc2626;
+          transform: translateY(-1px);
+        }
+        
+        #status-display {
+          margin-top: 16px;
+          font-size: 16px;
+          min-height: 24px;
+        }
+        
+        #keyboard-hint {
+          margin-top: 16px;
+          color: #6b7280;
+          font-size: 14px;
+        }
+        
+        .sessions-section {
+          background: white;
+          border-radius: 16px;
+          box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+          padding: 32px;
+        }
+        
+        .sessions-section h2 {
+          font-size: 24px;
+          font-weight: 700;
+          color: #1f2937;
+          margin-bottom: 24px;
+        }
+        
+        .action-btn {
+          padding: 8px 16px;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          background: white;
+          color: #374151;
+          font-size: 14px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        
+        .action-btn:hover {
+          background: #f9fafb;
+          border-color: #9ca3af;
+        }
+        
+        .action-btn.danger {
+          color: #dc2626;
+          border-color: #fecaca;
+        }
+        
+        .action-btn.danger:hover {
+          background: #fef2f2;
+          border-color: #fca5a5;
+        }
+        
+        .action-btn.cement-all-btn {
+          background: #7c3aed;
+          color: white;
+          border: none;
+        }
+        
+        .action-btn.cement-all-btn:hover {
+          background: #6d28d9;
+        }
+        
+        .sessions-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 16px;
+          background: white;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        
+        .sessions-table thead {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .sessions-table thead th {
+          padding: 16px 12px;
+          text-align: left;
+          font-weight: 600;
+          color: white;
+          font-size: 14px;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+          border: none;
+        }
+        
+        .sessions-table thead th:nth-child(5),
+        .sessions-table thead th:nth-child(6) {
+          text-align: center;
+        }
+        
+        .sessions-table tbody tr {
+          border-bottom: 1px solid #e5e7eb;
+          transition: background-color 0.2s ease;
+        }
+        
+        .sessions-table tbody tr:hover {
+          background-color: #f8fafc;
+        }
+        
+        .sessions-table tbody tr:last-child {
+          border-bottom: none;
+        }
+        
+        .sessions-table tbody tr.manual-row {
+          background-color: #fffbeb;
+          border-left: 4px solid #f59e0b;
+        }
+        
+        .sessions-table tbody tr.manual-row:hover {
+          background-color: #fef3c7;
+        }
+        
+        .sessions-table td {
+          padding: 12px;
+          border: none;
+          vertical-align: middle;
+        }
+        
+        .time-cell {
+          font-family: 'Monaco', 'Consolas', monospace;
+          font-size: 12px;
+          color: #6b7280;
+          background-color: #f9fafb;
+          border-radius: 4px;
+          margin: 2px 0;
+          padding: 8px 12px !important;
+        }
+        
+        .duration-cell {
+          font-family: 'Monaco', 'Consolas', monospace;
+          font-size: 16px;
+          font-weight: 700;
+          color: #2563eb;
+          text-align: center;
+          position: relative;
+        }
+        
+        .duration-display {
+          display: inline-block;
+          margin-right: 8px;
+        }
+        
+        .cement-btn {
+          padding: 4px 6px;
+          border: 1px solid #d1d5db;
+          border-radius: 4px;
+          background: white;
+          cursor: pointer;
+          font-size: 12px;
+          transition: all 0.2s ease;
+          vertical-align: middle;
+          margin-left: 4px;
+        }
+        
+        .cement-btn:hover {
+          background: #f3f4f6;
+          border-color: #9ca3af;
+          transform: scale(1.1);
+        }
+        
+        .comment-input {
+          width: 100%;
+          padding: 8px 12px;
+          border: 2px solid #e5e7eb;
+          border-radius: 6px;
+          font-size: 14px;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
+          background-color: #fafbfc;
+        }
+        
+        .comment-input:focus {
+          outline: none;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+          background-color: white;
+        }
+        
+        .comment-input::placeholder {
+          color: #9ca3af;
+          font-style: italic;
+        }
+        
+        .datetime-input {
+          width: 100%;
+          padding: 6px 8px;
+          border: 2px solid #e5e7eb;
+          border-radius: 4px;
+          font-size: 12px;
+          font-family: 'Monaco', 'Consolas', monospace;
+          background-color: white;
+          transition: border-color 0.2s ease;
+        }
+        
+        .datetime-input:focus {
+          outline: none;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+        
+        .datetime-input::-webkit-calendar-picker-indicator {
+          cursor: pointer;
+          filter: invert(0.5);
+        }
+        
+        .datetime-input::-webkit-calendar-picker-indicator:hover {
+          filter: invert(0.3);
+        }
+        
+        .add-row-cell {
+          text-align: center;
+          padding: 8px !important;
+        }
+        
+        .add-row-buttons {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          align-items: center;
+        }
+        
+        .add-row-btn {
+          padding: 4px 8px;
+          border: 1px solid #d1d5db;
+          border-radius: 4px;
+          background: white;
+          cursor: pointer;
+          font-size: 12px;
+          transition: all 0.2s ease;
+          min-width: 32px;
+        }
+        
+        .add-row-btn:hover {
+          background: #f3f4f6;
+          border-color: #9ca3af;
+          transform: scale(1.1);
+        }
+        
+        .action-cell {
+          text-align: center;
+        }
+        
+        .delete-btn {
+          color: #dc2626;
+          padding: 8px;
+          border: none;
+          background: none;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-size: 16px;
+        }
+        
+        .delete-btn:hover {
+          background-color: #fee2e2;
+          transform: scale(1.1);
+        }
+        
+        @media (max-width: 768px) {
+          .timer-display {
+            padding: 24px;
+          }
+          
+          #time-display {
+            font-size: 48px;
+          }
+          
+          .timer-btn {
+            padding: 12px 24px;
+            font-size: 14px;
+          }
+          
+          .sessions-table {
+            font-size: 12px;
+          }
+          
+          .sessions-table td {
+            padding: 8px 6px;
+          }
+          
+          .time-cell {
+            font-size: 10px;
+            padding: 6px 8px !important;
+          }
+          
+          .duration-cell {
+            font-size: 14px;
+          }
+          
+          .comment-input {
+            padding: 6px 8px;
+            font-size: 12px;
+          }
+          
+          .datetime-input {
+            font-size: 10px;
+            padding: 4px 6px;
+          }
+          
+          .add-row-buttons {
+            flex-direction: row;
+            gap: 2px;
+          }
+          
+          .add-row-btn {
+            padding: 2px 4px;
+            font-size: 10px;
+            min-width: 24px;
+          }
+        }
+      </style>
+      
+      <div class="container">
+        <div class="header">
+          <h1>Smart Timer</h1>
+          <p>Track your work sessions with precision</p>
+        </div>
+        
+        <div class="timer-display">
+          <div id="time-display">00:00:00</div>
+          <div id="buttons-container"></div>
+          <div id="status-display"></div>
+          <div id="keyboard-hint"></div>
+        </div>
+        
+        <div class="sessions-section">
+          <h2>Session History</h2>
+          <div id="sessions-container"></div>
+        </div>
+      </div>
+    `;
+    
+    this.updateDisplay();
+    this.renderSessions();
+  }
+};
+
+// Initialize the app when the page loads
+window.addEventListener('DOMContentLoaded', () => {
+  SmartTimerApp.init();
+});
+
+// Make it globally available
+window.SmartTimerApp = SmartTimerApp;
+
+
+  </script>
+
+</body>
+</html>

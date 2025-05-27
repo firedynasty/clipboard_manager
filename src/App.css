@@ -1,40 +1,278 @@
-.App {
-  text-align: center;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-.App-header {
-  background-color: #282c34;
-  padding: 20px;
-  color: white;
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%);
+  min-height: 100vh;
+}
+
+.App {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
 }
 
-.hello-button {
-  background-color: #61dafb;
-  color: #282c34;
-  border: none;
-  padding: 15px 30px;
-  font-size: 18px;
-  border-radius: 5px;
-  cursor: pointer;
+.App-header {
+  background: white;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  padding: 32px;
+  color: #1f2937;
+  border-radius: 16px;
   margin: 20px;
-  transition: background-color 0.3s;
 }
 
-.hello-button:hover {
-  background-color: #21a9c7;
+.App-header h1 {
+  font-size: 36px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  color: #1f2937;
 }
 
-.message {
-  margin-top: 20px;
+.controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.copy-button {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 16px 32px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.copy-button:hover {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+.copy-last-button {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.copy-last-button:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+.clear-button {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clear-button:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+.stats {
+  background: #f3f4f6;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  color: #374151;
+  border: 2px solid #e5e7eb;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
   font-size: 24px;
-  color: #61dafb;
-  animation: fadeIn 0.5s ease-in;
+  color: #6b7280;
+}
+
+.clipboard-content {
+  flex: 1;
+  padding: 0 20px 20px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 64px 20px;
+  color: #6b7280;
+}
+
+.empty-state p {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.empty-state p:last-child {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.table-container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-top: 20px;
+}
+
+.clipboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.clipboard-table thead {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.clipboard-table thead th {
+  padding: 16px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: white;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border: none;
+}
+
+.clipboard-table thead th:first-child {
+  width: 80px;
+  text-align: center;
+}
+
+.clipboard-table thead th:last-child {
+  width: 100px;
+  text-align: center;
+}
+
+.clipboard-table tbody tr {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.2s ease;
+}
+
+.clipboard-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+.clipboard-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.clipboard-table td {
+  padding: 16px 12px;
+  border: none;
+  vertical-align: top;
+}
+
+.id-cell {
+  text-align: center;
+  font-family: 'Monaco', 'Consolas', monospace;
+  font-weight: 700;
+  color: #2563eb;
+  background-color: #f8fafc;
+}
+
+.content-cell {
+  max-width: 0;
+  width: 100%;
+}
+
+.content-text {
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  font-family: 'Monaco', 'Consolas', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #374151;
+  background-color: #f9fafb;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+.actions-cell {
+  text-align: center;
+}
+
+.delete-button {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  color: #dc2626;
+}
+
+.delete-button:hover {
+  background-color: #fee2e2;
+  transform: scale(1.1);
+}
+
+@media (max-width: 768px) {
+  .App-header {
+    margin: 10px;
+    padding: 20px;
+  }
+  
+  .App-header h1 {
+    font-size: 28px;
+  }
+  
+  .controls {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .copy-button {
+    padding: 14px 28px;
+    font-size: 14px;
+  }
+  
+  .clipboard-table {
+    font-size: 12px;
+  }
+  
+  .clipboard-table td {
+    padding: 12px 8px;
+  }
+  
+  .content-text {
+    font-size: 12px;
+    padding: 8px;
+    max-height: 150px;
+  }
 }
 
 @keyframes fadeIn {
