@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, set, get } from 'firebase/database';
@@ -21,6 +21,7 @@ function App() {
   const [clipboardItems, setClipboardItems] = useState([]);
   const [nextId, setNextId] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [escapeMode, setEscapeMode] = useState('copy');
 
   useEffect(() => {
     loadFromFirebase();
@@ -88,7 +89,7 @@ function App() {
     }
   };
 
-  const copyLastItemToClipboard = async () => {
+  const copyLastItemToClipboard = useCallback(async () => {
     if (clipboardItems.length === 0) {
       alert('No items in table to copy');
       return;
@@ -102,13 +103,17 @@ function App() {
       console.error('Error copying to clipboard:', error);
       alert('Failed to copy to clipboard');
     }
-  };
+  }, [clipboardItems]);
 
   useEffect(() => {
     const handleKeyPress = (event) => {
-      if (event.key === ';') {
+      if (event.key === 'Escape') {
         event.preventDefault();
-        copyLastItemToClipboard();
+        if (escapeMode === 'insert') {
+          copyToClipboard();
+        } else if (escapeMode === 'copy') {
+          copyLastItemToClipboard();
+        }
       }
     };
 
@@ -116,7 +121,7 @@ function App() {
     return () => {
       document.removeEventListener('keydown', handleKeyPress);
     };
-  }, [clipboardItems, copyLastItemToClipboard]);
+  }, [escapeMode, copyLastItemToClipboard]);
 
   if (isLoading) {
     return (
@@ -137,10 +142,31 @@ function App() {
           <div className="stats">
             Items in table: {clipboardItems.length}
           </div>
+          <div className="escape-mode-controls">
+            <span>Escape key action:</span>
+            <label>
+              <input
+                type="radio"
+                value="insert"
+                checked={escapeMode === 'insert'}
+                onChange={(e) => setEscapeMode(e.target.value)}
+              />
+              Insert
+            </label>
+            <label>
+              <input
+                type="radio"
+                value="copy"
+                checked={escapeMode === 'copy'}
+                onChange={(e) => setEscapeMode(e.target.value)}
+              />
+              Copy
+            </label>
+          </div>
           {clipboardItems.length > 0 && (
             <>
               <button onClick={copyLastItemToClipboard} className="copy-last-button">
-                📋 Copy Last Item (;)
+                📋 Copy Last Item
               </button>
               <button onClick={clearAll} className="clear-button">
                 🗑️ Clear All

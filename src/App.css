@@ -103,6 +103,36 @@ body {
   border: 2px solid #e5e7eb;
 }
 
+.escape-mode-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f8fafc;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 2px solid #e5e7eb;
+}
+
+.escape-mode-controls span {
+  font-weight: 600;
+  color: #374151;
+  margin-right: 4px;
+}
+
+.escape-mode-controls label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.escape-mode-controls input[type="radio"] {
+  margin: 0;
+  cursor: pointer;
+}
+
 .loading {
   display: flex;
   justify-content: center;
