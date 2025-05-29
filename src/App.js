@@ -89,6 +89,16 @@ function App() {
     }
   };
 
+  const copyItemToClipboard = useCallback(async (item) => {
+    try {
+      await navigator.clipboard.writeText(item.content);
+      alert(`Item ${item.id} copied to clipboard!`);
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      alert('Failed to copy to clipboard');
+    }
+  }, []);
+
   const copyLastItemToClipboard = useCallback(async () => {
     if (clipboardItems.length === 0) {
       alert('No items in table to copy');
@@ -194,14 +204,17 @@ function App() {
               </thead>
               <tbody>
                 {clipboardItems.map((item) => (
-                  <tr key={item.id}>
+                  <tr key={item.id} onClick={() => copyItemToClipboard(item)} className="clickable-row">
                     <td className="id-cell">{item.id}</td>
                     <td className="content-cell">
                       <div className="content-text">{item.content}</div>
                     </td>
                     <td className="actions-cell">
                       <button 
-                        onClick={() => deleteItem(item.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteItem(item.id);
+                        }}
                         className="delete-button"
                         title="Delete item"
                       >

@@ -207,8 +207,13 @@ body {
   transition: background-color 0.2s ease;
 }
 
-.clipboard-table tbody tr:hover {
-  background-color: #f8fafc;
+.clipboard-table tbody tr.clickable-row {
+  cursor: pointer;
+}
+
+.clipboard-table tbody tr.clickable-row:hover {
+  background-color: #f0f9ff;
+  box-shadow: inset 0 0 0 1px #3b82f6;
 }
 
 .clipboard-table tbody tr:last-child {
