@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, set, get } from 'firebase/database';
+import { getDatabase, ref, set, get, onValue } from 'firebase/database';
+import CryptoJS from 'crypto-js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyB0_4AT0jzRoSeV5jK4rN4Ah7BTKKTl78I",
@@ -18,102 +19,146 @@ const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
 function App() {
-  const [clipboardItems, setClipboardItems] = useState([]);
-  const [nextId, setNextId] = useState(1);
+  const [lastClipboardItem, setLastClipboardItem] = useState(null);
+  const [textboxContent, setTextboxContent] = useState('');
+  const [encryptionKey, setEncryptionKey] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [escapeMode, setEscapeMode] = useState('copy');
 
   useEffect(() => {
-    loadFromFirebase();
-  }, []);
-
-  const loadFromFirebase = async () => {
-    try {
-      const dbRef = ref(database, 'clipboardManager/');
-      const snapshot = await get(dbRef);
+    const dbRef = ref(database, 'clipboardManager/lastItem');
+    const unsubscribe = onValue(dbRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
-        const items = Object.entries(data).map(([key, value]) => ({
-          id: parseInt(key),
-          content: value
-        }));
-        setClipboardItems(items.sort((a, b) => a.id - b.id));
-        setNextId(Math.max(...items.map(item => item.id)) + 1);
+        setLastClipboardItem(data);
+        
+        // For real-time updates, show raw data in textbox (user can manually decrypt with Load button)
+        setTextboxContent(data);
+      } else {
+        setLastClipboardItem(null);
+        setTextboxContent('');
       }
-    } catch (error) {
-      console.error('Error loading from Firebase:', error);
-    } finally {
       setIsLoading(false);
-    }
-  };
+    });
+
+    return () => unsubscribe();
+  }, []);
+
 
   const copyToClipboard = useCallback(async () => {
     try {
       const text = await navigator.clipboard.readText();
       if (text.trim()) {
-        const newItem = {
-          id: nextId,
-          content: text
-        };
-        
-        const newItems = [...clipboardItems, newItem];
-        setClipboardItems(newItems);
-        setNextId(nextId + 1);
-        
-        await set(ref(database, `clipboardManager/${nextId}`), text);
+        setLastClipboardItem(text);
+        setTextboxContent(text);
+        await set(ref(database, 'clipboardManager/lastItem'), text);
       }
     } catch (error) {
       console.error('Error copying from clipboard:', error);
       alert('Failed to access clipboard. Please allow clipboard permissions.');
     }
-  }, [clipboardItems, nextId]);
+  }, []);
 
-  const clearAll = async () => {
-    if (window.confirm('Are you sure you want to clear all clipboard items?')) {
+  const saveTextboxToFirebase = async () => {
+    try {
+      if (textboxContent.trim()) {
+        let dataToStore = textboxContent;
+        
+        // Encrypt if key is provided
+        if (encryptionKey.trim()) {
+          dataToStore = CryptoJS.AES.encrypt(textboxContent, encryptionKey).toString();
+          alert('Data encrypted and saved to Firebase!');
+        } else {
+          alert('Data saved to Firebase (no encryption)!');
+        }
+        
+        setLastClipboardItem(dataToStore);
+        await set(ref(database, 'clipboardManager/lastItem'), dataToStore);
+      }
+    } catch (error) {
+      console.error('Error saving to Firebase:', error);
+      alert('Failed to save to Firebase');
+    }
+  };
+
+  const loadFromFirebase = async () => {
+    try {
+      const dbRef = ref(database, 'clipboardManager/lastItem');
+      const snapshot = await get(dbRef);
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        setLastClipboardItem(data);
+        
+        let finalText = '';
+        
+        // Try to decrypt if key is provided
+        if (encryptionKey.trim()) {
+          try {
+            const decryptedBytes = CryptoJS.AES.decrypt(data, encryptionKey);
+            const decryptedText = decryptedBytes.toString(CryptoJS.enc.Utf8);
+            
+            if (decryptedText) {
+              setTextboxContent(decryptedText);
+              finalText = decryptedText;
+              alert('Data decrypted and loaded from Firebase!');
+            } else {
+              setTextboxContent(data);
+              finalText = data;
+              alert('❌ Wrong encryption key! Showing raw encrypted data.');
+            }
+          } catch (error) {
+            setTextboxContent(data);
+            finalText = data;
+            alert('❌ Decryption failed! Showing raw encrypted data.');
+          }
+        } else {
+          setTextboxContent(data);
+          finalText = data;
+          alert('Loaded from Firebase (no decryption)!');
+        }
+        
+        // Copy to clipboard
+        try {
+          await navigator.clipboard.writeText(finalText);
+          console.log('Content also copied to clipboard');
+        } catch (clipboardError) {
+          console.error('Failed to copy to clipboard:', clipboardError);
+        }
+      } else {
+        alert('No data found in Firebase');
+      }
+    } catch (error) {
+      console.error('Error loading from Firebase:', error);
+      alert('Failed to load from Firebase');
+    }
+  };
+
+  const clearItem = async () => {
+    if (window.confirm('Are you sure you want to clear the clipboard item?')) {
       try {
-        await set(ref(database, 'clipboardManager/'), null);
-        setClipboardItems([]);
-        setNextId(1);
+        await set(ref(database, 'clipboardManager/lastItem'), null);
+        setLastClipboardItem(null);
+        setTextboxContent('');
       } catch (error) {
         console.error('Error clearing data:', error);
       }
     }
   };
 
-  const deleteItem = async (id) => {
-    try {
-      await set(ref(database, `clipboardManager/${id}`), null);
-      setClipboardItems(clipboardItems.filter(item => item.id !== id));
-    } catch (error) {
-      console.error('Error deleting item:', error);
-    }
-  };
-
-  const copyItemToClipboard = useCallback(async (item) => {
-    try {
-      await navigator.clipboard.writeText(item.content);
-      alert(`Item ${item.id} copied to clipboard!`);
-    } catch (error) {
-      console.error('Error copying to clipboard:', error);
-      alert('Failed to copy to clipboard');
-    }
-  }, []);
-
-  const copyLastItemToClipboard = useCallback(async () => {
-    if (clipboardItems.length === 0) {
-      alert('No items in table to copy');
+  const copyItemToClipboard = useCallback(async () => {
+    if (!lastClipboardItem) {
+      alert('No item to copy');
       return;
     }
     
     try {
-      const lastItem = clipboardItems[clipboardItems.length - 1];
-      await navigator.clipboard.writeText(lastItem.content);
-      alert('Last item copied to clipboard!');
+      await navigator.clipboard.writeText(lastClipboardItem);
+      alert('Item copied to clipboard!');
     } catch (error) {
       console.error('Error copying to clipboard:', error);
       alert('Failed to copy to clipboard');
     }
-  }, [clipboardItems]);
+  }, [lastClipboardItem]);
 
   useEffect(() => {
     const handleKeyPress = (event) => {
@@ -122,7 +167,7 @@ function App() {
         if (escapeMode === 'insert') {
           copyToClipboard();
         } else if (escapeMode === 'copy') {
-          copyLastItemToClipboard();
+          copyItemToClipboard();
         }
       }
     };
@@ -131,7 +176,7 @@ function App() {
     return () => {
       document.removeEventListener('keydown', handleKeyPress);
     };
-  }, [escapeMode, copyToClipboard, copyLastItemToClipboard]);
+  }, [escapeMode, copyToClipboard, copyItemToClipboard]);
 
   if (isLoading) {
     return (
@@ -145,13 +190,35 @@ function App() {
     <div className="App">
       <header className="App-header">
         <h1>Clipboard Manager</h1>
+        
+        <div className="textbox-section">
+          <input
+            type="text"
+            value={encryptionKey}
+            onChange={(e) => setEncryptionKey(e.target.value)}
+            placeholder="Encryption key (leave blank for no encryption)"
+            style={{ width: '100%', marginBottom: '10px', padding: '8px' }}
+          />
+          <textarea 
+            value={textboxContent}
+            onChange={(e) => setTextboxContent(e.target.value)}
+            placeholder="Enter or edit text here..."
+            rows="4"
+            style={{ width: '100%', marginBottom: '10px' }}
+          />
+          <button onClick={saveTextboxToFirebase} className="save-button">
+            💾 Save to Firebase
+          </button>
+          &nbsp;
+          <button onClick={loadFromFirebase} className="load-button">
+            📥 Load from Firebase
+          </button>
+        </div>
+        
         <div className="controls">
           <button onClick={copyToClipboard} className="copy-button">
             📋 Insert from Clipboard
           </button>
-          <div className="stats">
-            Items in table: {clipboardItems.length}
-          </div>
           <div className="escape-mode-controls">
             <span>Escape key action:</span>
             <label>
@@ -173,13 +240,13 @@ function App() {
               Copy
             </label>
           </div>
-          {clipboardItems.length > 0 && (
+          {lastClipboardItem && (
             <>
-              <button onClick={copyLastItemToClipboard} className="copy-last-button">
-                📋 Copy Last Item
+              <button onClick={copyItemToClipboard} className="copy-last-button">
+                📋 Copy Item
               </button>
-              <button onClick={clearAll} className="clear-button">
-                🗑️ Clear All
+              <button onClick={clearItem} className="clear-button">
+                🗑️ Clear Item
               </button>
             </>
           )}
@@ -187,44 +254,16 @@ function App() {
       </header>
       
       <main className="clipboard-content">
-        {clipboardItems.length === 0 ? (
+        {!lastClipboardItem ? (
           <div className="empty-state">
-            <p>No clipboard items yet</p>
-            <p>Click "Insert from Clipboard" to add your first item</p>
+            <p>No clipboard item yet</p>
+            <p>Click "Insert from Clipboard" to add an item</p>
           </div>
         ) : (
-          <div className="table-container">
-            <table className="clipboard-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Content</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clipboardItems.map((item) => (
-                  <tr key={item.id} onClick={() => copyItemToClipboard(item)} className="clickable-row">
-                    <td className="id-cell">{item.id}</td>
-                    <td className="content-cell">
-                      <div className="content-text">{item.content}</div>
-                    </td>
-                    <td className="actions-cell">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteItem(item.id);
-                        }}
-                        className="delete-button"
-                        title="Delete item"
-                      >
-                        🗑️
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="item-container">
+            <div className="clipboard-item" onClick={copyItemToClipboard}>
+              <div className="content-text">{lastClipboardItem}</div>
+            </div>
           </div>
         )}
       </main>

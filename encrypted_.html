@@ -1,0 +1,342 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Cryptography Demo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .section h2 {
+            color: #ffd700;
+            margin-top: 0;
+            font-size: 1.3rem;
+        }
+        
+        .input-group {
+            margin: 15px 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #e0e0e0;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        
+        input::placeholder, textarea::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .output {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            min-height: 40px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            background: rgba(76, 175, 80, 0.3);
+            color: #a5d6a7;
+        }
+        
+        .status.error {
+            background: rgba(244, 67, 54, 0.3);
+            color: #ef9a9a;
+        }
+        
+        .info {
+            background: rgba(33, 150, 243, 0.2);
+            border: 1px solid rgba(33, 150, 243, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .warning {
+            background: rgba(255, 152, 0, 0.2);
+            border: 1px solid rgba(255, 152, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .key-display {
+            background: rgba(255, 215, 0, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Cryptography Demo</h1>
+        
+        <div class="info">
+            <strong>How it works:</strong> Your data is encrypted with your key before being "stored" (simulated) and can only be decrypted with the same key. Try encrypting some data, then decrypt it with different keys to see how cryptography protects your information.
+        </div>
+        
+        <!-- Encryption Section -->
+        <div class="section">
+            <h2>🔒 Encrypt & Store Data</h2>
+            
+            <div class="input-group">
+                <label>Data to encrypt:</label>
+                <textarea id="dataInput" placeholder="Enter your secret data here..." rows="3"></textarea>
+            </div>
+            
+            <div class="input-group">
+                <label>Encryption key:</label>
+                <input type="text" id="encryptKey" placeholder="Enter your key (e.g., 'helloworld')">
+            </div>
+            
+            <button onclick="encryptAndStore()">🔒 Encrypt & Store</button>
+            
+            <div class="input-group">
+                <label>Encrypted data (what gets stored):</label>
+                <div id="encryptedOutput" class="output">Encrypted data will appear here...</div>
+            </div>
+            
+            <div id="encryptStatus"></div>
+        </div>
+        
+        <!-- Decryption Section -->
+        <div class="section">
+            <h2>🔓 Retrieve & Decrypt Data</h2>
+            
+            <div class="input-group">
+                <label>Decryption key:</label>
+                <input type="text" id="decryptKey" placeholder="Enter the key to decrypt">
+            </div>
+            
+            <button onclick="retrieveAndDecrypt()">🔓 Retrieve & Decrypt</button>
+            
+            <div class="input-group">
+                <label>Decrypted data:</label>
+                <div id="decryptedOutput" class="output">Decrypted data will appear here...</div>
+            </div>
+            
+            <div id="decryptStatus"></div>
+        </div>
+        
+        <!-- Current Storage Section -->
+        <div class="section">
+            <h2>💾 Current Storage Status</h2>
+            <div id="storageInfo" class="output">No data stored yet...</div>
+            <button onclick="clearStorage()">🗑️ Clear Storage</button>
+        </div>
+        
+        <div class="warning">
+            <strong>⚠️ Security Note:</strong> In a real application, never store encryption keys in your client-side code or transmit them over insecure connections. This demo is for educational purposes only.
+        </div>
+        
+        <div class="info">
+            <strong>🚀 For Firebase Integration:</strong> Replace the simulated storage with actual Firebase Realtime Database calls using the Firebase SDK. The encryption/decryption logic remains the same!
+        </div>
+    </div>
+
+    <script>
+        // Simulated storage (in real app, this would be Firebase)
+        let simulatedDatabase = {};
+        
+        function encryptAndStore() {
+            const data = document.getElementById('dataInput').value;
+            const key = document.getElementById('encryptKey').value;
+            const encryptedOutput = document.getElementById('encryptedOutput');
+            const status = document.getElementById('encryptStatus');
+            
+            if (!data.trim()) {
+                status.innerHTML = '<div class="status error">Please enter some data to encrypt!</div>';
+                return;
+            }
+            
+            if (!key.trim()) {
+                status.innerHTML = '<div class="status error">Please enter an encryption key!</div>';
+                return;
+            }
+            
+            try {
+                // Encrypt the data using AES encryption
+                const encrypted = CryptoJS.AES.encrypt(data, key).toString();
+                
+                // Simulate storing to Firebase (in real app, use Firebase SDK)
+                const timestamp = Date.now();
+                const dataId = 'data_' + timestamp;
+                
+                simulatedDatabase[dataId] = {
+                    encryptedData: encrypted,
+                    timestamp: timestamp,
+                    keyHint: key.substring(0, 2) + '*'.repeat(key.length - 2) // Just for demo
+                };
+                
+                encryptedOutput.textContent = encrypted;
+                status.innerHTML = '<div class="status success">✅ Data encrypted and stored successfully!</div>';
+                
+                updateStorageInfo();
+                
+            } catch (error) {
+                status.innerHTML = '<div class="status error">❌ Encryption failed: ' + error.message + '</div>';
+            }
+        }
+        
+        function retrieveAndDecrypt() {
+            const key = document.getElementById('decryptKey').value;
+            const decryptedOutput = document.getElementById('decryptedOutput');
+            const status = document.getElementById('decryptStatus');
+            
+            if (!key.trim()) {
+                status.innerHTML = '<div class="status error">Please enter a decryption key!</div>';
+                return;
+            }
+            
+            // Get the most recent encrypted data from storage
+            const dataEntries = Object.values(simulatedDatabase);
+            if (dataEntries.length === 0) {
+                status.innerHTML = '<div class="status error">No encrypted data found in storage!</div>';
+                return;
+            }
+            
+            const latestData = dataEntries[dataEntries.length - 1];
+            
+            try {
+                // Decrypt the data
+                const decryptedBytes = CryptoJS.AES.decrypt(latestData.encryptedData, key);
+                const decryptedText = decryptedBytes.toString(CryptoJS.enc.Utf8);
+                
+                if (!decryptedText) {
+                    // Decryption failed - wrong key
+                    decryptedOutput.textContent = "🚫 DECRYPTION FAILED - Wrong key!";
+                    status.innerHTML = '<div class="status error">❌ Wrong key! The data remains scrambled.</div>';
+                } else {
+                    // Decryption successful
+                    decryptedOutput.textContent = decryptedText;
+                    status.innerHTML = '<div class="status success">✅ Data decrypted successfully!</div>';
+                }
+                
+            } catch (error) {
+                decryptedOutput.textContent = "🚫 DECRYPTION ERROR";
+                status.innerHTML = '<div class="status error">❌ Decryption error: ' + error.message + '</div>';
+            }
+        }
+        
+        function updateStorageInfo() {
+            const storageInfo = document.getElementById('storageInfo');
+            const entries = Object.entries(simulatedDatabase);
+            
+            if (entries.length === 0) {
+                storageInfo.textContent = "No data stored yet...";
+                return;
+            }
+            
+            let info = `📊 Storage contains ${entries.length} encrypted record(s):\n\n`;
+            
+            entries.forEach(([id, data], index) => {
+                const date = new Date(data.timestamp).toLocaleString();
+                info += `${index + 1}. ID: ${id}\n`;
+                info += `   Timestamp: ${date}\n`;
+                info += `   Key hint: ${data.keyHint}\n`;
+                info += `   Encrypted data: ${data.encryptedData.substring(0, 50)}...\n\n`;
+            });
+            
+            storageInfo.textContent = info;
+        }
+        
+        function clearStorage() {
+            simulatedDatabase = {};
+            document.getElementById('storageInfo').textContent = "No data stored yet...";
+            document.getElementById('encryptedOutput').textContent = "Encrypted data will appear here...";
+            document.getElementById('decryptedOutput').textContent = "Decrypted data will appear here...";
+            document.getElementById('encryptStatus').innerHTML = '';
+            document.getElementById('decryptStatus').innerHTML = '';
+        }
+        
+        // Initialize storage info on page load
+        updateStorageInfo();
+        
+        // Demo functionality - populate with example
+        setTimeout(() => {
+            document.getElementById('dataInput').value = "This is my secret message! 🤫";
+            document.getElementById('encryptKey').value = "helloworld";
+        }, 1000);
+    </script>
+</body>
+</html>
