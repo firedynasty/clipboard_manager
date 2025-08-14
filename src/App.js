@@ -24,6 +24,9 @@ function App() {
   const [encryptionKey, setEncryptionKey] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [escapeMode, setEscapeMode] = useState('copy');
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImagePreview, setSelectedImagePreview] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
 
   useEffect(() => {
     const dbRef = ref(database, 'clipboardManager/lastItem');
@@ -145,6 +148,74 @@ function App() {
     }
   };
 
+  const uploadImageToCloudinary = async () => {
+    if (!selectedImage) {
+      alert('Please select an image first');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', selectedImage);
+    formData.append('upload_preset', process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET);
+    formData.append('cloud_name', process.env.REACT_APP_CLOUDINARY_CLOUD_NAME);
+
+    try {
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.REACT_APP_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        const cloudinaryUrl = data.secure_url;
+        setImageUrl(cloudinaryUrl);
+        
+        // Store the Cloudinary URL in Firebase
+        await set(ref(database, 'clipboardManager/lastImage'), cloudinaryUrl);
+        alert('Image uploaded to Cloudinary and URL saved to Firebase!');
+      } else {
+        console.error('Upload failed:', data);
+        alert('Upload failed: ' + (data.error?.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Error uploading image: ' + error.message);
+    }
+  };
+
+  const loadImageFromFirebase = async () => {
+    try {
+      const dbRef = ref(database, 'clipboardManager/lastImage');
+      const snapshot = await get(dbRef);
+      
+      if (snapshot.exists()) {
+        const url = snapshot.val();
+        setImageUrl(url);
+        alert('Image URL loaded from Firebase!');
+      } else {
+        alert('No image URL found in Firebase');
+      }
+    } catch (error) {
+      console.error('Error loading image URL:', error);
+      alert('Failed to load image URL from Firebase');
+    }
+  };
+
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedImage(file);
+      
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setSelectedImagePreview(previewUrl);
+    }
+  };
+
   const copyItemToClipboard = useCallback(async () => {
     if (!lastClipboardItem) {
       alert('No item to copy');
@@ -213,6 +284,51 @@ function App() {
           <button onClick={loadFromFirebase} className="load-button">
             📥 Load from Firebase
           </button>
+        </div>
+
+        <div className="image-section" style={{ marginTop: '20px' }}>
+          <h3>Image Upload</h3>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageSelect}
+            style={{ marginBottom: '10px' }}
+          />
+          <br />
+          <button onClick={uploadImageToCloudinary} className="upload-button">
+            📤 Save to Cloudinary
+          </button>
+          &nbsp;
+          <button onClick={loadImageFromFirebase} className="load-image-button">
+            📥 Load from Cloudinary
+          </button>
+          
+          {selectedImagePreview && (
+            <div style={{ marginTop: '20px' }}>
+              <p>Selected Image Preview:</p>
+              <img 
+                src={selectedImagePreview} 
+                alt="Selected preview" 
+                style={{ width: '100%', maxHeight: '500px', objectFit: 'contain', border: '1px solid #ccc' }}
+              />
+            </div>
+          )}
+          
+          {imageUrl && (
+            <div style={{ marginTop: '20px' }}>
+              <p>Current Image:</p>
+              <img 
+                src={imageUrl} 
+                alt="Uploaded" 
+                style={{ width: '100%', maxHeight: '500px', objectFit: 'contain', border: '1px solid #ccc', cursor: 'pointer' }}
+                onClick={() => navigator.clipboard.writeText(imageUrl)}
+                title="Click to copy URL to clipboard"
+              />
+              <p style={{ fontSize: '12px', color: '#666' }}>
+                Click image to copy URL to clipboard
+              </p>
+            </div>
+          )}
         </div>
         
         <div className="controls">
