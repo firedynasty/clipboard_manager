@@ -27,6 +27,7 @@ function App() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [selectedImageSlot, setSelectedImageSlot] = useState(1);
 
   useEffect(() => {
     const dbRef = ref(database, 'clipboardManager/lastItem');
@@ -175,7 +176,7 @@ function App() {
         setImageUrl(cloudinaryUrl);
         
         // Store the Cloudinary URL in Firebase
-        await set(ref(database, 'clipboardManager/lastImage'), cloudinaryUrl);
+        await set(ref(database, `clipboardManager/lastImage${selectedImageSlot}`), cloudinaryUrl);
         alert('Image uploaded to Cloudinary and URL saved to Firebase!');
       } else {
         console.error('Upload failed:', data);
@@ -189,7 +190,7 @@ function App() {
 
   const loadImageFromFirebase = async () => {
     try {
-      const dbRef = ref(database, 'clipboardManager/lastImage');
+      const dbRef = ref(database, `clipboardManager/lastImage${selectedImageSlot}`);
       const snapshot = await get(dbRef);
       
       if (snapshot.exists()) {
@@ -295,6 +296,20 @@ function App() {
             style={{ marginBottom: '10px' }}
           />
           <br />
+          <div style={{ marginBottom: '10px' }}>
+            <span>Select slot: </span>
+            {[1, 2, 3, 4, 5].map(slot => (
+              <label key={slot} style={{ marginRight: '10px' }}>
+                <input
+                  type="radio"
+                  value={slot}
+                  checked={selectedImageSlot === slot}
+                  onChange={(e) => setSelectedImageSlot(parseInt(e.target.value))}
+                />
+                {slot}
+              </label>
+            ))}
+          </div>
           <button onClick={uploadImageToCloudinary} className="upload-button">
             📤 Save to Cloudinary
           </button>
