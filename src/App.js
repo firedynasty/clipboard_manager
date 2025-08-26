@@ -166,8 +166,7 @@ function App() {
     formData.append('upload_preset', process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET);
     formData.append('cloud_name', process.env.REACT_APP_CLOUDINARY_CLOUD_NAME);
     formData.append('public_id', publicId);
-    formData.append('use_filename', 'true');
-    formData.append('unique_filename', 'false');
+    formData.append('filename_override', selectedImage.name);
 
     try {
       const response = await fetch(
