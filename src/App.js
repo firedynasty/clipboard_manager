@@ -226,19 +226,19 @@ function App() {
   };
 
   const copyItemToClipboard = useCallback(async () => {
-    if (!lastClipboardItem) {
-      alert('No item to copy');
+    if (!textboxContent) {
+      alert('No textarea content to copy');
       return;
     }
     
     try {
-      await navigator.clipboard.writeText(lastClipboardItem);
-      alert('Item copied to clipboard!');
+      await navigator.clipboard.writeText(textboxContent);
+      alert('Textarea copied to clipboard!');
     } catch (error) {
       console.error('Error copying to clipboard:', error);
       alert('Failed to copy to clipboard');
     }
-  }, [lastClipboardItem]);
+  }, [textboxContent]);
 
   useEffect(() => {
     const handleKeyPress = (event) => {
@@ -379,7 +379,7 @@ function App() {
               Copy
             </label>
           </div>
-          {lastClipboardItem && (
+          {textboxContent && (
             <>
               <button onClick={copyItemToClipboard} className="copy-last-button">
                 📋 Copy Item
