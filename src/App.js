@@ -157,13 +157,18 @@ function App() {
 
     let formatted = textboxContent;
     
-    // Replace variant patterns with line breaks before them (except the first one)
-    formatted = formatted.replace(/(\[Variant "From Position"\]\[FEN [^\]]+\])/g, (match, p1, offset) => {
-      return offset === 0 ? match : '\n' + match;
+    // Add line breaks before each variant pattern, but not at the very beginning
+    let isFirst = true;
+    formatted = formatted.replace(/\[Variant "From Position"\]/g, (match, offset) => {
+      if (isFirst && offset === 0) {
+        isFirst = false;
+        return match;
+      }
+      return '\n' + match;
     });
     
     // Find positions where comments appear (text after FEN that's not another variant)
-    formatted = formatted.replace(/(\[FEN [^\]]+\])([^[]+)/g, (match, fenPart, comment) => {
+    formatted = formatted.replace(/(\[FEN [^\]]+\])([^[\n]+)/g, (match, fenPart, comment) => {
       if (comment.trim()) {
         return fenPart + '\n' + comment.trim();
       }
