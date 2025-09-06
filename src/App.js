@@ -149,6 +149,35 @@ function App() {
     }
   };
 
+  const formatVariants = () => {
+    if (!textboxContent.trim()) {
+      alert('No content to format');
+      return;
+    }
+
+    let formatted = textboxContent;
+    
+    // Replace variant patterns with line breaks before them (except the first one)
+    formatted = formatted.replace(/(\[Variant "From Position"\]\[FEN [^\]]+\])/g, (match, p1, offset) => {
+      return offset === 0 ? match : '\n' + match;
+    });
+    
+    // Find positions where comments appear (text after FEN that's not another variant)
+    formatted = formatted.replace(/(\[FEN [^\]]+\])([^[]+)/g, (match, fenPart, comment) => {
+      if (comment.trim()) {
+        return fenPart + '\n' + comment.trim();
+      }
+      return fenPart;
+    });
+    
+    // Clean up any extra line breaks
+    formatted = formatted.replace(/\n\s*\n/g, '\n').trim();
+    
+    setTextboxContent(formatted);
+    setLastClipboardItem(formatted);
+    alert('Variants formatted with line breaks!');
+  };
+
   const uploadImageToCloudinary = async () => {
     if (!selectedImage) {
       alert('Please select an image first');
@@ -386,6 +415,9 @@ function App() {
               </button>
               <button onClick={clearItem} className="clear-button">
                 🗑️ Clear Item
+              </button>
+              <button onClick={formatVariants} className="format-button">
+                📝 Format Variants
               </button>
             </>
           )}
