@@ -274,6 +274,21 @@ function App() {
     }
   }, [textboxContent]);
 
+  const clearTextarea = () => {
+    setTextboxContent('');
+  };
+
+  const pasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setTextboxContent(text);
+      alert('Content pasted from clipboard!');
+    } catch (error) {
+      console.error('Error reading from clipboard:', error);
+      alert('Failed to read from clipboard');
+    }
+  };
+
   useEffect(() => {
     const handleKeyPress = (event) => {
       if (event.key === 'Escape') {
@@ -326,6 +341,14 @@ function App() {
           &nbsp;
           <button onClick={loadFromFirebase} className="load-button">
             📥 Load from Firebase
+          </button>
+          &nbsp;
+          <button onClick={clearTextarea} className="clear-textarea-button">
+            🗑️ Clear Textarea
+          </button>
+          &nbsp;
+          <button onClick={pasteFromClipboard} className="paste-button">
+            📋 Paste from Clipboard
           </button>
         </div>
 
