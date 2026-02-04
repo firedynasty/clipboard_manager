@@ -4,13 +4,21 @@ import './App.css';
 function App() {
   const [textboxContent, setTextboxContent] = useState('');
   const [savedContent, setSavedContent] = useState('');
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImagePreview, setSelectedImagePreview] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
 
   useEffect(() => {
     fetch('/api/files')
       .then((res) => res.json())
       .then((data) => {
-        if (data.files && data.files['saved-content.txt']) {
-          setSavedContent(data.files['saved-content.txt']);
+        if (data.files) {
+          if (data.files['saved-content.txt']) {
+            setSavedContent(data.files['saved-content.txt']);
+          }
+          if (data.files['image-url.txt']) {
+            setImageUrl(data.files['image-url.txt']);
+          }
         }
       })
       .catch(() => {});
@@ -52,6 +60,72 @@ function App() {
     }
   };
 
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedImage(file);
+      setSelectedImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const saveImage = async () => {
+    if (!selectedImage) {
+      alert('Please select an image first');
+      return;
+    }
+
+    const filename = selectedImage.name.replace(/\.[^/.]+$/, '');
+    const publicId = `clipboard/${filename}`;
+
+    const formData = new FormData();
+    formData.append('file', selectedImage);
+    formData.append('upload_preset', process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET);
+    formData.append('cloud_name', process.env.REACT_APP_CLOUDINARY_CLOUD_NAME);
+    formData.append('public_id', publicId);
+
+    try {
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.REACT_APP_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        { method: 'POST', body: formData }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const cloudinaryUrl = data.secure_url;
+        setImageUrl(cloudinaryUrl);
+
+        await fetch('/api/files', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename: 'image-url.txt',
+            content: cloudinaryUrl,
+          }),
+        });
+        alert('Image uploaded and URL saved!');
+      } else {
+        alert('Upload failed: ' + (data.error?.message || 'Unknown error'));
+      }
+    } catch (error) {
+      alert('Error uploading image: ' + error.message);
+    }
+  };
+
+  const loadImage = async () => {
+    try {
+      const response = await fetch('/api/files');
+      const data = await response.json();
+      if (data.files && data.files['image-url.txt']) {
+        setImageUrl(data.files['image-url.txt']);
+      } else {
+        alert('No saved image URL found');
+      }
+    } catch (error) {
+      alert('Failed to load image URL');
+    }
+  };
+
   return (
     <div className="App">
       <div className="container">
@@ -81,6 +155,46 @@ function App() {
             </button>
           </div>
         )}
+
+        <div className="image-section">
+          <h2>Image</h2>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageSelect}
+          />
+          <div className="buttons">
+            <button onClick={saveImage} className="save-button">
+              Save Image
+            </button>
+            <button onClick={loadImage} className="paste-button">
+              Load Image
+            </button>
+          </div>
+
+          {selectedImagePreview && (
+            <div className="image-preview">
+              <p>Preview:</p>
+              <img src={selectedImagePreview} alt="Preview" />
+            </div>
+          )}
+
+          {imageUrl && (
+            <div className="image-preview">
+              <p>Saved Image:</p>
+              <img
+                src={imageUrl}
+                alt="Saved"
+                onClick={() => {
+                  navigator.clipboard.writeText(imageUrl);
+                  alert('Image URL copied!');
+                }}
+                title="Click to copy URL"
+              />
+              <p className="image-url-hint">Click image to copy URL</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
