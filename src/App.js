@@ -1,9 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 
 function App() {
   const [textboxContent, setTextboxContent] = useState('');
   const [savedContent, setSavedContent] = useState('');
+
+  useEffect(() => {
+    fetch('/api/files')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.files && data.files['saved-content.txt']) {
+          setSavedContent(data.files['saved-content.txt']);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const pasteFromClipboard = async () => {
     try {
@@ -14,9 +25,21 @@ function App() {
     }
   };
 
-  const save = () => {
+  const save = async () => {
     if (textboxContent.trim()) {
       setSavedContent(textboxContent);
+      try {
+        await fetch('/api/files', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename: 'saved-content.txt',
+            content: textboxContent,
+          }),
+        });
+      } catch (error) {
+        alert('Failed to save to server');
+      }
     }
   };
 
