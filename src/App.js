@@ -5,7 +5,6 @@ function App() {
   const [textboxContent, setTextboxContent] = useState('');
   const [savedContent, setSavedContent] = useState('');
   const [selectedImage, setSelectedImage] = useState(null);
-  const [selectedImagePreview, setSelectedImagePreview] = useState('');
   const [imageUrl, setImageUrl] = useState('');
 
   useEffect(() => {
@@ -15,9 +14,6 @@ function App() {
         if (data.files) {
           if (data.files['saved-content.txt']) {
             setSavedContent(data.files['saved-content.txt']);
-          }
-          if (data.files['image-url.txt']) {
-            setImageUrl(data.files['image-url.txt']);
           }
         }
       })
@@ -64,7 +60,6 @@ function App() {
     const file = e.target.files[0];
     if (file) {
       setSelectedImage(file);
-      setSelectedImagePreview(URL.createObjectURL(file));
     }
   };
 
@@ -171,13 +166,6 @@ function App() {
               Load Image
             </button>
           </div>
-
-          {selectedImagePreview && (
-            <div className="image-preview">
-              <p>Preview:</p>
-              <img src={selectedImagePreview} alt="Preview" />
-            </div>
-          )}
 
           {imageUrl && (
             <div className="image-preview">
