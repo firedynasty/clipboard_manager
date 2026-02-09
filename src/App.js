@@ -70,6 +70,19 @@ function App() {
     }
   };
 
+  const append = async () => {
+    if (textboxContent.trim()) {
+      try {
+        const combined = savedContent
+          ? savedContent + '\n' + textboxContent
+          : textboxContent;
+        await saveContent(combined);
+      } catch (error) {
+        alert('Failed to append to server');
+      }
+    }
+  };
+
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(savedContent);
@@ -169,8 +182,14 @@ function App() {
           <button onClick={pasteFromClipboard} className="paste-button">
             Paste from Clipboard
           </button>
+          <button onClick={() => setTextboxContent(savedContent)} className="paste-button">
+            Paste from Saved
+          </button>
           <button onClick={save} className="save-button">
             Save
+          </button>
+          <button onClick={append} className="save-button">
+            Append
           </button>
         </div>
 
