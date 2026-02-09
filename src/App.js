@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 
 function App() {
@@ -6,6 +6,8 @@ function App() {
   const [savedContent, setSavedContent] = useState('');
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageUrl, setImageUrl] = useState('');
+  const [autoSave, setAutoSave] = useState(false);
+  const autoSaveTimer = useRef(null);
 
   useEffect(() => {
     fetch('/api/files')
@@ -20,6 +22,35 @@ function App() {
       .catch(() => {});
   }, []);
 
+  const saveContent = useCallback(async (content) => {
+    if (content.trim()) {
+      setSavedContent(content);
+      try {
+        await fetch('/api/files', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename: 'saved-content.txt',
+            content: content,
+          }),
+        });
+      } catch (error) {
+        // silent fail for auto-save
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!autoSave) return;
+    if (autoSaveTimer.current) {
+      clearTimeout(autoSaveTimer.current);
+    }
+    autoSaveTimer.current = setTimeout(() => {
+      saveContent(textboxContent);
+    }, 3000);
+    return () => clearTimeout(autoSaveTimer.current);
+  }, [textboxContent, autoSave, saveContent]);
+
   const pasteFromClipboard = async () => {
     try {
       const text = await navigator.clipboard.readText();
@@ -31,16 +62,8 @@ function App() {
 
   const save = async () => {
     if (textboxContent.trim()) {
-      setSavedContent(textboxContent);
       try {
-        await fetch('/api/files', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filename: 'saved-content.txt',
-            content: textboxContent,
-          }),
-        });
+        await saveContent(textboxContent);
       } catch (error) {
         alert('Failed to save to server');
       }
@@ -132,6 +155,15 @@ function App() {
           placeholder="Paste or type text here..."
           rows="6"
         />
+
+        <div className="auto-save-toggle">
+          <label className="toggle-label">
+            <span>Auto Save</span>
+            <div className={`toggle-switch ${autoSave ? 'active' : ''}`} onClick={() => setAutoSave(!autoSave)}>
+              <div className="toggle-knob" />
+            </div>
+          </label>
+        </div>
 
         <div className="buttons">
           <button onClick={pasteFromClipboard} className="paste-button">
