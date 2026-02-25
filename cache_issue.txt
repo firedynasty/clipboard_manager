@@ -1,0 +1,23 @@
+Cache Issue - Vercel Blob CDN Stale Reads
+==========================================
+
+Problem:
+- Save and Append buttons appeared to work (content showed in UI) but didn't persist across tabs/refreshes
+- Content would only appear after multiple refreshes
+
+Root Causes:
+
+1. Silent error swallowing in saveContent()
+   - The saveContent function caught API errors silently, so failed saves looked successful in the UI
+   - setSavedContent() updated React state before the API call, making it appear saved
+   - Fix: Let errors propagate so the caller can alert the user. Added a { silent } option for auto-save.
+
+2. Vercel Blob CDN caching
+   - The GET endpoint fetched blob content via fetch(blob.url), which hits the Vercel Blob CDN
+   - The CDN caches aggressively, so after writing new content, reads still returned stale data
+   - Fix: Added cache-busting query param (blob.url + '?t=' + Date.now()) to bypass CDN cache
+   - Also added Cache-Control: no-store header on GET responses to prevent browser caching
+
+Files Changed:
+- src/App.js - saveContent now throws on API failure instead of silently catching
+- api/files.js - Cache-busting on blob URL fetch + no-store response header
