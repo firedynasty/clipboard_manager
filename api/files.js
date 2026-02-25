@@ -10,11 +10,12 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === 'GET') {
+    res.setHeader('Cache-Control', 'no-store');
     try {
       const { blobs } = await list({ prefix: 'clipboard/' });
       const files = {};
       for (const blob of blobs) {
-        const response = await fetch(blob.url);
+        const response = await fetch(blob.url + '?t=' + Date.now());
         const content = await response.text();
         const filename = blob.pathname.replace('clipboard/', '');
         files[filename] = content;
