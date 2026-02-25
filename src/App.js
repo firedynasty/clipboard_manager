@@ -22,20 +22,21 @@ function App() {
       .catch(() => {});
   }, []);
 
-  const saveContent = useCallback(async (content) => {
+  const saveContent = useCallback(async (content, { silent = false } = {}) => {
     if (content.trim()) {
       setSavedContent(content);
-      try {
-        await fetch('/api/files', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filename: 'saved-content.txt',
-            content: content,
-          }),
-        });
-      } catch (error) {
-        // silent fail for auto-save
+      const response = await fetch('/api/files', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: 'saved-content.txt',
+          content: content,
+        }),
+      });
+      if (!response.ok) {
+        if (!silent) {
+          throw new Error('Failed to save');
+        }
       }
     }
   }, []);
@@ -46,7 +47,7 @@ function App() {
       clearTimeout(autoSaveTimer.current);
     }
     autoSaveTimer.current = setTimeout(() => {
-      saveContent(textboxContent);
+      saveContent(textboxContent, { silent: true }).catch(() => {});
     }, 3000);
     return () => clearTimeout(autoSaveTimer.current);
   }, [textboxContent, autoSave, saveContent]);
