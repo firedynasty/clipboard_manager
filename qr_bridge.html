@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QR Bridge — Physical → Digital</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f0e8;
+    --fg: #1a1a18;
+    --accent: #c45d3e;
+    --accent-light: #e8a48e;
+    --card-bg: #fffdf8;
+    --border: #d4cfc4;
+    --muted: #8a857a;
+    --success: #4a7c59;
+    --code-bg: #eae5db;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--fg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Subtle paper texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 640px;
+    padding: 2rem 1.5rem;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  header h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 2.4rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 0.5rem;
+  }
+
+  header h1 .arrow {
+    color: var(--accent);
+    display: inline-block;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  header p {
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Generator Mode */
+  .generator { display: flex; flex-direction: column; gap: 1.5rem; }
+
+  label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+    display: block;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 140px;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card-bg);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.9rem;
+    color: var(--fg);
+    resize: vertical;
+    transition: border-color 0.2s;
+    line-height: 1.6;
+  }
+
+  textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  textarea::placeholder {
+    color: var(--border);
+  }
+
+  .input-group {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  input[type="text"] {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card-bg);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--fg);
+    transition: border-color 0.2s;
+  }
+
+  input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  input[type="text"]::placeholder {
+    color: var(--border);
+  }
+
+  .btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .btn-primary {
+    background: var(--fg);
+    color: var(--bg);
+  }
+
+  .btn-primary:hover {
+    background: var(--accent);
+  }
+
+  .btn-primary:active {
+    transform: scale(0.97);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--fg);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--fg);
+  }
+
+  .btn-success {
+    background: var(--success);
+    color: #fff;
+  }
+
+  .mode-toggle {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .mode-toggle button {
+    flex: 1;
+    padding: 0.6rem 1rem;
+    border: none;
+    background: transparent;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+
+  .mode-toggle button.active {
+    background: var(--fg);
+    color: var(--bg);
+  }
+
+  .mode-toggle button:not(.active):hover {
+    background: var(--code-bg);
+  }
+
+  /* QR Output */
+  .qr-output {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 2rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .qr-output.visible { display: flex; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  #qrcode {
+    padding: 1rem;
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  #qrcode img, #qrcode canvas {
+    display: block;
+  }
+
+  .qr-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-align: center;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .qr-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* Viewer Mode */
+  .viewer {
+    display: none;
+    flex-direction: column;
+    gap: 1.5rem;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .viewer.visible { display: flex; }
+
+  .viewer-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .viewer-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--code-bg);
+  }
+
+  .viewer-card-header span {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+
+  .viewer-content {
+    padding: 1.25rem;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
+  .viewer-content a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .copy-toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--fg);
+    color: var(--bg);
+    padding: 0.7rem 1.4rem;
+    border-radius: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    opacity: 0;
+    transition: all 0.25s ease;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  .copy-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* Print styles */
+  .print-zone {
+    display: none;
+  }
+
+  @media print {
+    body { background: #fff; }
+    body::before { display: none; }
+    .container { display: none; }
+    .print-zone {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 1rem;
+      padding: 2rem;
+    }
+    .print-zone h2 {
+      font-family: 'Instrument Serif', serif;
+      font-size: 1.4rem;
+      font-weight: 400;
+    }
+    .print-zone .print-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      color: #888;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+  }
+
+  /* Responsive */
+  @media (max-width: 480px) {
+    .container { padding: 1.5rem 1rem; }
+    header h1 { font-size: 1.8rem; }
+    .qr-actions { flex-direction: column; width: 100%; }
+    .qr-actions .btn { width: 100%; text-align: center; }
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .how-it-works {
+    background: var(--code-bg);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  .how-it-works strong {
+    color: var(--fg);
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>QR Bridge <span class="arrow">→</span></h1>
+    <p>Physical paper to digital clipboard</p>
+  </header>
+
+  <!-- GENERATOR MODE -->
+  <div class="generator" id="generatorView">
+
+    <div class="mode-toggle">
+      <button class="active" onclick="setMode('text')">Text / Notes</button>
+      <button onclick="setMode('url')">URL / Link</button>
+    </div>
+
+    <div id="textMode">
+      <label>Paste your content</label>
+      <textarea id="contentInput" placeholder="Paste text, notes, a snippet — anything you want accessible from a QR scan..."></textarea>
+    </div>
+
+    <div id="urlMode" style="display:none;">
+      <label>Enter a URL</label>
+      <input type="text" id="urlInput" placeholder="https://drive.google.com/...">
+    </div>
+
+    <div id="baseURLGroup">
+      <label>Your deployed site URL</label>
+      <input type="text" id="baseURLInput" placeholder="https://your-app.vercel.app">
+      <div style="font-size:0.7rem; color:var(--muted); margin-top:0.3rem; line-height:1.5;">
+        Deploy this file to Vercel first, then paste the URL here so QR codes point to the right place.
+      </div>
+    </div>
+
+    <div id="titleGroup">
+      <label>Label (optional — printed with QR code)</label>
+      <input type="text" id="titleInput" placeholder="e.g. &quot;Biology Notes Ch. 3&quot;">
+    </div>
+
+    <button class="btn btn-primary" onclick="generate()" style="width:100%;">Generate QR Code</button>
+
+    <div class="qr-output" id="qrOutput">
+      <div id="qrcode"></div>
+      <div class="qr-label" id="qrLabel"></div>
+      <div class="qr-actions">
+        <button class="btn btn-secondary" onclick="printQR()">⎙ Print</button>
+        <button class="btn btn-secondary" onclick="downloadQR()">↓ Save PNG</button>
+        <button class="btn btn-secondary" onclick="copyLink()">⧉ Copy Link</button>
+      </div>
+    </div>
+
+    <div class="how-it-works">
+      <strong>How it works:</strong> Your content is encoded directly into the QR code's URL.
+      No server, no database — scan the code and your content appears instantly
+      with a one-tap copy button. Print the QR and stick it on your physical folder or clipboard.
+    </div>
+  </div>
+
+  <!-- VIEWER MODE (shown when URL has content) -->
+  <div class="viewer" id="viewerView">
+    <div class="viewer-card">
+      <div class="viewer-card-header">
+        <span id="viewerTitle">Content</span>
+        <button class="btn btn-primary" onclick="copyContent()" id="copyBtn">Copy to Clipboard</button>
+      </div>
+      <div class="viewer-content" id="viewerContent"></div>
+    </div>
+    <button class="btn btn-secondary" onclick="goToGenerator()" style="width:100%; text-align:center;">
+      ← Create your own QR code
+    </button>
+  </div>
+
+  <footer>
+    QR Bridge — all content stays in the URL, nothing is stored on a server
+  </footer>
+</div>
+
+<!-- Print zone (only visible when printing) -->
+<div class="print-zone" id="printZone">
+  <h2 id="printTitle"></h2>
+  <div id="printQR"></div>
+  <div class="print-label" id="printLabel">Scan to view content</div>
+</div>
+
+<!-- Toast -->
+<div class="copy-toast" id="toast">Copied to clipboard ✓</div>
+
+<script>
+  let currentMode = 'text';
+  let currentURL = '';
+  let qrInstance = null;
+
+  // Check if we're in viewer mode (URL has content hash)
+  function init() {
+    const hash = window.location.hash;
+    if (hash && hash.length > 1) {
+      showViewer(hash.substring(1));
+    } else {
+      showGenerator();
+    }
+  }
+
+  function setMode(mode) {
+    currentMode = mode;
+    const buttons = document.querySelectorAll('.mode-toggle button');
+    buttons.forEach(b => b.classList.remove('active'));
+    if (mode === 'text') {
+      buttons[0].classList.add('active');
+      document.getElementById('textMode').style.display = '';
+      document.getElementById('urlMode').style.display = 'none';
+    } else {
+      buttons[1].classList.add('active');
+      document.getElementById('textMode').style.display = 'none';
+      document.getElementById('urlMode').style.display = '';
+    }
+  }
+
+  function encodeContent(text) {
+    // Use base64 encoding for URL safety
+    const bytes = new TextEncoder().encode(text);
+    let binary = '';
+    bytes.forEach(b => binary += String.fromCharCode(b));
+    return btoa(binary);
+  }
+
+  function decodeContent(encoded) {
+    try {
+      const binary = atob(encoded);
+      const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+      return new TextDecoder().decode(bytes);
+    } catch (e) {
+      return decodeURIComponent(encoded);
+    }
+  }
+
+  function generate() {
+    let content, label;
+
+    if (currentMode === 'text') {
+      content = document.getElementById('contentInput').value.trim();
+    } else {
+      content = document.getElementById('urlInput').value.trim();
+    }
+
+    label = document.getElementById('titleInput').value.trim();
+
+    if (!content) {
+      document.getElementById(currentMode === 'text' ? 'contentInput' : 'urlInput').focus();
+      return;
+    }
+
+    // For URL mode, just use the URL directly as the QR target
+    if (currentMode === 'url') {
+      currentURL = content;
+    } else {
+      // For text mode, encode into this page's URL
+      const baseURL = document.getElementById('baseURLInput').value.trim();
+      if (!baseURL) {
+        alert('Please enter your deployed site URL first (e.g. https://your-app.vercel.app)');
+        document.getElementById('baseURLInput').focus();
+        return;
+      }
+      const encoded = encodeContent(content);
+      currentURL = baseURL.replace(/\/+$/, '') + '/#' + encoded;
+    }
+
+    // Check URL length (QR codes handle up to ~4000 chars well)
+    if (currentURL.length > 3500) {
+      alert('Content is too long for a QR code. Try shortening it or use a URL to a cloud document instead.');
+      return;
+    }
+
+    // Generate QR
+    const container = document.getElementById('qrcode');
+    container.innerHTML = '';
+
+    qrInstance = new QRCode(container, {
+      text: currentURL,
+      width: 220,
+      height: 220,
+      colorDark: '#1a1a18',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+
+    // Label
+    const displayLabel = label || (currentMode === 'url' ? content : content.substring(0, 60) + (content.length > 60 ? '...' : ''));
+    document.getElementById('qrLabel').textContent = displayLabel;
+
+    // Store for print
+    document.getElementById('printTitle').textContent = label || 'QR Bridge';
+
+    // Show output
+    document.getElementById('qrOutput').classList.add('visible');
+
+    // Scroll to QR
+    setTimeout(() => {
+      document.getElementById('qrOutput').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  }
+
+  function printQR() {
+    const printQRDiv = document.getElementById('printQR');
+    printQRDiv.innerHTML = '';
+    new QRCode(printQRDiv, {
+      text: currentURL,
+      width: 300,
+      height: 300,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+
+    const label = document.getElementById('titleInput').value.trim();
+    document.getElementById('printTitle').textContent = label || 'QR Bridge';
+
+    setTimeout(() => window.print(), 200);
+  }
+
+  function downloadQR() {
+    const canvas = document.querySelector('#qrcode canvas');
+    if (!canvas) return;
+
+    // Create a larger canvas with padding and label
+    const pad = 40;
+    const labelHeight = 40;
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = canvas.width + pad * 2;
+    exportCanvas.height = canvas.height + pad * 2 + labelHeight;
+
+    const ctx = exportCanvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+    ctx.drawImage(canvas, pad, pad);
+
+    // Add label
+    const label = document.getElementById('titleInput').value.trim() || 'QR Bridge';
+    ctx.fillStyle = '#1a1a18';
+    ctx.font = '14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, exportCanvas.width / 2, canvas.height + pad + labelHeight - 8);
+
+    const link = document.createElement('a');
+    link.download = (label.replace(/[^a-z0-9]/gi, '_') || 'qr-bridge') + '.png';
+    link.href = exportCanvas.toDataURL('image/png');
+    link.click();
+  }
+
+  function copyLink() {
+    navigator.clipboard.writeText(currentURL).then(() => showToast('Link copied ✓'));
+  }
+
+  function showViewer(hash) {
+    document.getElementById('generatorView').style.display = 'none';
+    document.getElementById('viewerView').classList.add('visible');
+
+    const decoded = decodeContent(hash);
+
+    // Check if it looks like a URL
+    const isURL = /^https?:\/\//i.test(decoded);
+
+    const contentDiv = document.getElementById('viewerContent');
+    if (isURL) {
+      contentDiv.innerHTML = `<a href="${decoded}" target="_blank" rel="noopener">${decoded}</a>`;
+      document.getElementById('viewerTitle').textContent = 'Link';
+    } else {
+      contentDiv.textContent = decoded;
+      document.getElementById('viewerTitle').textContent = 'Content';
+    }
+
+    // Store for copy
+    contentDiv.dataset.raw = decoded;
+  }
+
+  function copyContent() {
+    const raw = document.getElementById('viewerContent').dataset.raw;
+    navigator.clipboard.writeText(raw).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = 'Copied ✓';
+      btn.classList.remove('btn-primary');
+      btn.classList.add('btn-success');
+      showToast('Copied to clipboard ✓');
+      setTimeout(() => {
+        btn.textContent = 'Copy to Clipboard';
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-primary');
+      }, 2000);
+    });
+  }
+
+  function showGenerator() {
+    document.getElementById('generatorView').style.display = 'flex';
+  }
+
+  function goToGenerator() {
+    window.location.hash = '';
+    document.getElementById('viewerView').classList.remove('visible');
+    showGenerator();
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+  }
+
+  // Init
+  (function() {
+    // Auto-fill base URL if we're on a real domain
+    const origin = window.location.origin;
+    if (origin && origin !== 'null' && !origin.includes('localhost')) {
+      document.getElementById('baseURLInput').value = origin + window.location.pathname.replace(/\/+$/, '');
+    }
+    init();
+  })();
+</script>
+
+</body>
+</html>
