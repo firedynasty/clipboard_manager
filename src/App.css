@@ -87,13 +87,26 @@ button:hover {
   background: #059669;
 }
 
+.saved-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
 .copy-button {
   background: #8b5cf6;
-  margin-top: 12px;
 }
 
 .copy-button:hover {
   background: #7c3aed;
+}
+
+.go-link-button {
+  background: #e67e22;
+}
+
+.go-link-button:hover {
+  background: #d35400;
 }
 
 .auto-save-toggle {
@@ -202,6 +215,14 @@ button:hover {
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.save-png-button {
+  background: #6366f1;
+}
+
+.save-png-button:hover {
+  background: #4f46e5;
 }
 
 .qr-hint {

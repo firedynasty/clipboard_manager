@@ -93,6 +93,37 @@ function App() {
     }
   };
 
+  const downloadQR = () => {
+    const canvas = qrRef.current?.querySelector('canvas');
+    if (!canvas) return;
+    const pad = 40;
+    const labelHeight = 40;
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = canvas.width + pad * 2;
+    exportCanvas.height = canvas.height + pad * 2 + labelHeight;
+    const ctx = exportCanvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+    ctx.drawImage(canvas, pad, pad);
+    ctx.fillStyle = '#1a1a18';
+    ctx.font = '14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('QR Bridge', exportCanvas.width / 2, canvas.height + pad + labelHeight - 8);
+    const link = document.createElement('a');
+    link.download = 'qr-bridge.png';
+    link.href = exportCanvas.toDataURL('image/png');
+    link.click();
+  };
+
+  const goToLink = () => {
+    const url = savedContent.trim();
+    if (/^https?:\/\//i.test(url)) {
+      window.open(url, '_blank', 'noopener');
+    } else {
+      alert('Saved content is not a valid URL');
+    }
+  };
+
   const generateQR = () => {
     const content = textboxContent.trim();
     if (!content) {
@@ -174,9 +205,14 @@ function App() {
         {savedContent && (
           <div className="saved-section">
             <div className="saved-content">{savedContent}</div>
-            <button onClick={copyToClipboard} className="copy-button">
-              Copy to Clipboard
-            </button>
+            <div className="saved-actions">
+              <button onClick={copyToClipboard} className="copy-button">
+                Copy to Clipboard
+              </button>
+              <button onClick={goToLink} className="go-link-button">
+                Go to Link
+              </button>
+            </div>
           </div>
         )}
 
@@ -187,6 +223,9 @@ function App() {
           </button>
           <div className="qr-output" style={{ display: qrVisible ? 'flex' : 'none' }}>
             <div ref={qrRef}></div>
+            <button onClick={downloadQR} className="save-png-button">
+              Save PNG
+            </button>
             <p className="qr-hint">Scan to view and copy content on any device</p>
           </div>
         </div>
