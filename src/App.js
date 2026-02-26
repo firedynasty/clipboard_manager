@@ -4,8 +4,8 @@ import './App.css';
 function App() {
   const [textboxContent, setTextboxContent] = useState('');
   const [savedContent, setSavedContent] = useState('');
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [imageUrl, setImageUrl] = useState('');
+  const [qrVisible, setQrVisible] = useState(false);
+  const qrRef = useRef(null);
   const [autoSave, setAutoSave] = useState(false);
   const autoSaveTimer = useRef(null);
 
@@ -93,69 +93,46 @@ function App() {
     }
   };
 
-  const handleImageSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setSelectedImage(file);
-    }
-  };
-
-  const saveImage = async () => {
-    if (!selectedImage) {
-      alert('Please select an image first');
+  const generateQR = () => {
+    const content = textboxContent.trim();
+    if (!content) {
+      alert('Please enter some text first');
       return;
     }
 
-    const filename = selectedImage.name.replace(/\.[^/.]+$/, '');
-    const publicId = `clipboard/${filename}`;
+    const container = qrRef.current;
+    container.innerHTML = '';
 
-    const formData = new FormData();
-    formData.append('file', selectedImage);
-    formData.append('upload_preset', process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET);
-    formData.append('cloud_name', process.env.REACT_APP_CLOUDINARY_CLOUD_NAME);
-    formData.append('public_id', publicId);
-
-    try {
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${process.env.REACT_APP_CLOUDINARY_CLOUD_NAME}/image/upload`,
-        { method: 'POST', body: formData }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        const cloudinaryUrl = data.secure_url;
-        setImageUrl(cloudinaryUrl);
-
-        await fetch('/api/files', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filename: 'image-url.txt',
-            content: cloudinaryUrl,
-          }),
-        });
-        alert('Image uploaded and URL saved!');
-      } else {
-        alert('Upload failed: ' + (data.error?.message || 'Unknown error'));
-      }
-    } catch (error) {
-      alert('Error uploading image: ' + error.message);
+    const QRCode = window.QRCode;
+    if (!QRCode) {
+      alert('QR library not loaded');
+      return;
     }
-  };
 
-  const loadImage = async () => {
-    try {
-      const response = await fetch('/api/files');
-      const data = await response.json();
-      if (data.files && data.files['image-url.txt']) {
-        setImageUrl(data.files['image-url.txt']);
-      } else {
-        alert('No saved image URL found');
-      }
-    } catch (error) {
-      alert('Failed to load image URL');
+    // Encode content into a URL pointing to the QR Bridge viewer
+    const bytes = new TextEncoder().encode(content);
+    let binary = '';
+    bytes.forEach(b => binary += String.fromCharCode(b));
+    const encoded = btoa(binary);
+
+    const baseURL = window.location.origin;
+    const qrURL = baseURL + '/qr_bridge.html#' + encoded;
+
+    if (qrURL.length > 3500) {
+      alert('Content is too long for a QR code. Try shortening it.');
+      return;
     }
+
+    new QRCode(container, {
+      text: qrURL,
+      width: 220,
+      height: 220,
+      colorDark: '#1a1a18',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+
+    setQrVisible(true);
   };
 
   return (
@@ -167,7 +144,7 @@ function App() {
           value={textboxContent}
           onChange={(e) => setTextboxContent(e.target.value)}
           placeholder="Paste or type text here..."
-          rows="6"
+          rows="3"
         />
 
         <div className="auto-save-toggle">
@@ -203,35 +180,15 @@ function App() {
           </div>
         )}
 
-        <div className="image-section">
-          <h2>Image</h2>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageSelect}
-          />
-          <div className="buttons">
-            <button onClick={saveImage} className="save-button">
-              Save Image
-            </button>
-            <button onClick={loadImage} className="paste-button">
-              Load Image
-            </button>
-          </div>
-
-          {imageUrl && (
-            <div className="image-preview">
-              <p>Saved Image:</p>
-              <img
-                src={imageUrl}
-                alt="Saved"
-                onClick={() => {
-                  navigator.clipboard.writeText(imageUrl);
-                  alert('Image URL copied!');
-                }}
-                title="Click to copy URL"
-              />
-              <p className="image-url-hint">Click image to copy URL</p>
+        <div className="qr-section">
+          <h2>QR Code</h2>
+          <button onClick={generateQR} className="qr-button">
+            Generate QR Code
+          </button>
+          {qrVisible && (
+            <div className="qr-output">
+              <div ref={qrRef}></div>
+              <p className="qr-hint">Scan to view and copy content on any device</p>
             </div>
           )}
         </div>
