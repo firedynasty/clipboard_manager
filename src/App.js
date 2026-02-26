@@ -185,12 +185,10 @@ function App() {
           <button onClick={generateQR} className="qr-button">
             Generate QR Code
           </button>
-          {qrVisible && (
-            <div className="qr-output">
-              <div ref={qrRef}></div>
-              <p className="qr-hint">Scan to view and copy content on any device</p>
-            </div>
-          )}
+          <div className="qr-output" style={{ display: qrVisible ? 'flex' : 'none' }}>
+            <div ref={qrRef}></div>
+            <p className="qr-hint">Scan to view and copy content on any device</p>
+          </div>
         </div>
       </div>
     </div>
