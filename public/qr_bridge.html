@@ -678,12 +678,7 @@
     // Store for copy
     contentDiv.dataset.raw = decoded;
 
-    // Auto-save scanned content to saved-content on the server
-    fetch('/api/files', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename: 'saved-content.txt', content: decoded })
-    }).catch(function() {});
+    // Previously auto-saved to server — removed (Dropbox auth not available on this page)
   }
 
   function copyContent() {

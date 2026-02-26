@@ -27,6 +27,38 @@ body {
   height: fit-content;
 }
 
+.dropbox-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: #f3f4f6;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.dbx-status {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.dbx-link-btn {
+  background: none;
+  color: #3b82f6;
+  border: none;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.dbx-link-btn:hover {
+  color: #2563eb;
+  transform: none;
+}
+
 h1 {
   font-size: 28px;
   font-weight: 700;

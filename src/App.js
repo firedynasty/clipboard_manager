@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 
+const DROPBOX_PATH = '/blob_vercel_replacement/blob_clipboard_content.txt';
+
 function App() {
   const [textboxContent, setTextboxContent] = useState('');
   const [savedContent, setSavedContent] = useState('');
@@ -8,35 +10,33 @@ function App() {
   const qrRef = useRef(null);
   const [autoSave, setAutoSave] = useState(false);
   const autoSaveTimer = useRef(null);
+  const [dbxSignedIn, setDbxSignedIn] = useState(false);
 
   useEffect(() => {
-    fetch('/api/files')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.files) {
-          if (data.files['saved-content.txt']) {
-            setSavedContent(data.files['saved-content.txt']);
-          }
-        }
-      })
-      .catch(() => {});
+    const loadData = async () => {
+      if (window._dropboxReady) await window._dropboxReady;
+      const signedIn = !!(window.getDropboxAccessToken && window.getDropboxAccessToken());
+      setDbxSignedIn(signedIn);
+      if (!signedIn) return;
+      try {
+        const content = await window.dropboxDownloadFile(DROPBOX_PATH);
+        if (content) setSavedContent(content);
+      } catch {}
+    };
+    loadData();
   }, []);
 
   const saveContent = useCallback(async (content, { silent = false } = {}) => {
     if (content.trim()) {
       setSavedContent(content);
-      const response = await fetch('/api/files', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filename: 'saved-content.txt',
-          content: content,
-        }),
-      });
-      if (!response.ok) {
-        if (!silent) {
-          throw new Error('Failed to save');
-        }
+      if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) {
+        if (!silent) alert('Sign in to Dropbox first');
+        return;
+      }
+      try {
+        await window.dropboxUploadFile(DROPBOX_PATH, content);
+      } catch (error) {
+        if (!silent) throw error;
       }
     }
   }, []);
@@ -66,7 +66,7 @@ function App() {
       try {
         await saveContent(textboxContent);
       } catch (error) {
-        alert('Failed to save to server');
+        alert('Failed to save to Dropbox');
       }
     }
   };
@@ -79,7 +79,7 @@ function App() {
           : textboxContent;
         await saveContent(combined);
       } catch (error) {
-        alert('Failed to append to server');
+        alert('Failed to append to Dropbox');
       }
     }
   };
@@ -166,9 +166,29 @@ function App() {
     setQrVisible(true);
   };
 
+  const handleDropboxSignOut = async () => {
+    if (window.dropboxSignOut) await window.dropboxSignOut();
+    setDbxSignedIn(false);
+    setSavedContent('');
+  };
+
   return (
     <div className="App">
       <div className="container">
+        <div className="dropbox-bar">
+          {dbxSignedIn ? (
+            <>
+              <span className="dbx-status">Dropbox: Connected</span>
+              <button onClick={handleDropboxSignOut} className="dbx-link-btn">Sign Out</button>
+            </>
+          ) : (
+            <>
+              <span className="dbx-status">Dropbox: Not connected</span>
+              <button onClick={() => window.dropboxSignIn && window.dropboxSignIn()} className="dbx-link-btn">Sign In</button>
+            </>
+          )}
+        </div>
+
         <h1>Clipboard Manager</h1>
 
         <textarea
