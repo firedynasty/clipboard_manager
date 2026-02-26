@@ -166,6 +166,20 @@ function App() {
     setQrVisible(true);
   };
 
+  const loadFromDropbox = async () => {
+    if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) {
+      alert('Sign in to Dropbox first');
+      return;
+    }
+    try {
+      const content = await window.dropboxDownloadFile(DROPBOX_PATH);
+      if (content) setSavedContent(content);
+      else alert('No saved content found in Dropbox');
+    } catch {
+      alert('Failed to load from Dropbox');
+    }
+  };
+
   const handleDropboxSignOut = async () => {
     if (window.dropboxSignOut) await window.dropboxSignOut();
     setDbxSignedIn(false);
@@ -179,6 +193,7 @@ function App() {
           {dbxSignedIn ? (
             <>
               <span className="dbx-status">Dropbox: Connected</span>
+              <button onClick={loadFromDropbox} className="dbx-link-btn">Load</button>
               <button onClick={handleDropboxSignOut} className="dbx-link-btn">Sign Out</button>
             </>
           ) : (
