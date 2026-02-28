@@ -247,6 +247,9 @@ function App() {
               <button onClick={goToLink} className="go-link-button">
                 Go to Link
               </button>
+              <button onClick={loadFromDropbox} className="go-link-button">
+                Refresh
+              </button>
             </div>
           </div>
         )}
