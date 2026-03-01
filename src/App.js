@@ -17,6 +17,9 @@ function App() {
   const [newLabel, setNewLabel] = useState('');
   const [newContent, setNewContent] = useState('');
   const [copiedLabel, setCopiedLabel] = useState(null);
+  const lookupRef = useRef(null);
+  const labelRef = useRef(null);
+  const contentRef = useRef(null);
 
   const parseShortcuts = (text) => {
     if (!text) return [];
@@ -284,33 +287,45 @@ function App() {
           <h2>Shortcuts</h2>
 
           <div className="shortcuts-lookup-row">
-            <input
-              type="text"
-              value={lookupQuery}
-              onChange={(e) => setLookupQuery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') shortcutLookup(lookupQuery); }}
-              placeholder="Type a label to lookup..."
-              className="shortcuts-input"
-            />
+            <div className="input-wrap">
+              <input
+                ref={lookupRef}
+                type="text"
+                value={lookupQuery}
+                onChange={(e) => setLookupQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') shortcutLookup(lookupQuery); }}
+                placeholder="Type a label to lookup..."
+                className="shortcuts-input"
+              />
+              <button className="input-clear-btn" onClick={() => { setLookupQuery(''); lookupRef.current.focus(); }}>&times;</button>
+            </div>
             <button onClick={() => shortcutLookup(lookupQuery)} className="shortcuts-btn lookup-btn">Lookup</button>
           </div>
 
           <div className="shortcuts-add-row">
-            <input
-              type="text"
-              value={newLabel}
-              onChange={(e) => setNewLabel(e.target.value)}
-              placeholder="Label"
-              className="shortcuts-input shortcuts-label-input"
-            />
-            <input
-              type="text"
-              value={newContent}
-              onChange={(e) => setNewContent(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') addShortcut(); }}
-              placeholder="URL or command"
-              className="shortcuts-input shortcuts-content-input"
-            />
+            <div className="input-wrap">
+              <input
+                ref={labelRef}
+                type="text"
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                placeholder="Label"
+                className="shortcuts-input shortcuts-label-input"
+              />
+              <button className="input-clear-btn" onClick={() => { setNewLabel(''); labelRef.current.focus(); }}>&times;</button>
+            </div>
+            <div className="input-wrap input-wrap-grow">
+              <input
+                ref={contentRef}
+                type="text"
+                value={newContent}
+                onChange={(e) => setNewContent(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') addShortcut(); }}
+                placeholder="URL or command"
+                className="shortcuts-input shortcuts-content-input"
+              />
+              <button className="input-clear-btn" onClick={() => { setNewContent(''); contentRef.current.focus(); }}>&times;</button>
+            </div>
             <button onClick={addShortcut} className="shortcuts-btn add-btn">Add</button>
           </div>
 

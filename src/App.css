@@ -227,6 +227,43 @@ button:hover {
   margin-bottom: 10px;
 }
 
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-wrap-grow {
+  flex: 1;
+}
+
+.shortcuts-lookup-row .input-wrap {
+  flex: 1;
+}
+
+.input-wrap .shortcuts-input {
+  padding-right: 28px;
+}
+
+.input-clear-btn {
+  position: absolute;
+  right: 4px;
+  background: none;
+  color: #9ca3af;
+  border: none;
+  font-size: 16px;
+  padding: 2px 6px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.input-clear-btn:hover {
+  color: #374151;
+  background: #e5e7eb;
+  transform: none;
+}
+
 .shortcuts-input {
   padding: 8px 12px;
   font-size: 14px;
@@ -241,7 +278,7 @@ button:hover {
 }
 
 .shortcuts-lookup-row .shortcuts-input {
-  flex: 1;
+  width: 100%;
 }
 
 .shortcuts-label-input {
@@ -250,7 +287,7 @@ button:hover {
 }
 
 .shortcuts-content-input {
-  flex: 1;
+  width: 100%;
 }
 
 .shortcuts-btn {
