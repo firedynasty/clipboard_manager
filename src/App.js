@@ -2,15 +2,38 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 
 const DROPBOX_PATH = '/blob_vercel_replacement/blob_clipboard_content.txt';
+const QR_DROPBOX_PATH = '/blob_vercel_replacement/blob_clipboard_qr.txt';
 
 function App() {
   const [textboxContent, setTextboxContent] = useState('');
   const [savedContent, setSavedContent] = useState('');
-  const [qrVisible, setQrVisible] = useState(false);
-  const qrRef = useRef(null);
   const [autoSave, setAutoSave] = useState(false);
   const autoSaveTimer = useRef(null);
   const [dbxSignedIn, setDbxSignedIn] = useState(false);
+
+  // Shortcuts state
+  const [shortcuts, setShortcuts] = useState([]);
+  const [lookupQuery, setLookupQuery] = useState('');
+  const [newLabel, setNewLabel] = useState('');
+  const [newContent, setNewContent] = useState('');
+  const [copiedLabel, setCopiedLabel] = useState(null);
+
+  const parseShortcuts = (text) => {
+    if (!text) return [];
+    return text.split('\n').filter(line => line.trim()).map(line => {
+      const idx = line.indexOf(',');
+      if (idx === -1) return { label: line.trim(), content: '' };
+      return { label: line.substring(0, idx).trim(), content: line.substring(idx + 1).trim() };
+    });
+  };
+
+  const loadShortcuts = useCallback(async () => {
+    if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) return;
+    try {
+      const text = await window.dropboxDownloadFile(QR_DROPBOX_PATH);
+      if (text) setShortcuts(parseShortcuts(text));
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -21,6 +44,11 @@ function App() {
       try {
         const content = await window.dropboxDownloadFile(DROPBOX_PATH);
         if (content) setSavedContent(content);
+      } catch {}
+      // Load shortcuts alongside main content
+      try {
+        const text = await window.dropboxDownloadFile(QR_DROPBOX_PATH);
+        if (text) setShortcuts(parseShortcuts(text));
       } catch {}
     };
     loadData();
@@ -93,28 +121,6 @@ function App() {
     }
   };
 
-  const downloadQR = () => {
-    const canvas = qrRef.current?.querySelector('canvas');
-    if (!canvas) return;
-    const pad = 40;
-    const labelHeight = 40;
-    const exportCanvas = document.createElement('canvas');
-    exportCanvas.width = canvas.width + pad * 2;
-    exportCanvas.height = canvas.height + pad * 2 + labelHeight;
-    const ctx = exportCanvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-    ctx.drawImage(canvas, pad, pad);
-    ctx.fillStyle = '#1a1a18';
-    ctx.font = '14px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('QR Bridge', exportCanvas.width / 2, canvas.height + pad + labelHeight - 8);
-    const link = document.createElement('a');
-    link.download = 'qr-bridge.png';
-    link.href = exportCanvas.toDataURL('image/png');
-    link.click();
-  };
-
   const goToLink = () => {
     const url = savedContent.trim();
     if (/^https?:\/\//i.test(url)) {
@@ -124,47 +130,67 @@ function App() {
     }
   };
 
-  const generateQR = () => {
-    const content = textboxContent.trim();
-    if (!content) {
-      alert('Please enter some text first');
-      return;
+  const shortcutLookup = async (query) => {
+    const q = query.trim().toLowerCase();
+    if (!q) return;
+    const match = shortcuts.find(s => s.label.toLowerCase() === q);
+    if (match) {
+      try {
+        await navigator.clipboard.writeText(match.content);
+        setCopiedLabel(match.label);
+        setTimeout(() => setCopiedLabel(null), 1500);
+      } catch {
+        alert('Failed to copy to clipboard');
+      }
+    } else {
+      alert('No shortcut found for "' + query.trim() + '"');
     }
-
-    const container = qrRef.current;
-    container.innerHTML = '';
-
-    const QRCode = window.QRCode;
-    if (!QRCode) {
-      alert('QR library not loaded');
-      return;
-    }
-
-    // Encode content into a URL pointing to the QR Bridge viewer
-    const bytes = new TextEncoder().encode(content);
-    let binary = '';
-    bytes.forEach(b => binary += String.fromCharCode(b));
-    const encoded = btoa(binary);
-
-    const baseURL = window.location.origin;
-    const qrURL = baseURL + '/qr_bridge.html#' + encoded;
-
-    if (qrURL.length > 3500) {
-      alert('Content is too long for a QR code. Try shortening it.');
-      return;
-    }
-
-    new QRCode(container, {
-      text: qrURL,
-      width: 220,
-      height: 220,
-      colorDark: '#1a1a18',
-      colorLight: '#ffffff',
-      correctLevel: QRCode.CorrectLevel.M
-    });
-
-    setQrVisible(true);
   };
+
+  const addShortcut = async () => {
+    const label = newLabel.trim();
+    const content = newContent.trim();
+    if (!label || !content) { alert('Both label and content are required'); return; }
+    if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) { alert('Sign in to Dropbox first'); return; }
+    const newLine = label + ',' + content;
+    const updated = shortcuts.length > 0
+      ? shortcuts.map(s => s.label + ',' + s.content).join('\n') + '\n' + newLine
+      : newLine;
+    try {
+      await window.dropboxUploadFile(QR_DROPBOX_PATH, updated);
+      setShortcuts(parseShortcuts(updated));
+      setNewLabel('');
+      setNewContent('');
+    } catch {
+      alert('Failed to save shortcut to Dropbox');
+    }
+  };
+
+  const deleteShortcut = async (index) => {
+    if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) { alert('Sign in to Dropbox first'); return; }
+    const updated = shortcuts.filter((_, i) => i !== index);
+    const text = updated.map(s => s.label + ',' + s.content).join('\n');
+    try {
+      await window.dropboxUploadFile(QR_DROPBOX_PATH, text || ' ');
+      setShortcuts(updated);
+    } catch {
+      alert('Failed to delete shortcut from Dropbox');
+    }
+  };
+
+  const copyShortcutContent = async (shortcut) => {
+    try {
+      await navigator.clipboard.writeText(shortcut.content);
+      setCopiedLabel(shortcut.label);
+      setTimeout(() => setCopiedLabel(null), 1500);
+    } catch {
+      alert('Failed to copy to clipboard');
+    }
+  };
+
+  const filteredShortcuts = lookupQuery.trim()
+    ? shortcuts.filter(s => s.label.toLowerCase().includes(lookupQuery.trim().toLowerCase()))
+    : shortcuts;
 
   const loadFromDropbox = async () => {
     if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) {
@@ -254,17 +280,61 @@ function App() {
           </div>
         )}
 
-        <div className="qr-section">
-          <h2>QR Code</h2>
-          <button onClick={generateQR} className="qr-button">
-            Generate QR Code
-          </button>
-          <div className="qr-output" style={{ display: qrVisible ? 'flex' : 'none' }}>
-            <div ref={qrRef}></div>
-            <button onClick={downloadQR} className="save-png-button">
-              Save PNG
-            </button>
-            <p className="qr-hint">Scan to view and copy content on any device</p>
+        <div className="shortcuts-section">
+          <h2>Shortcuts</h2>
+
+          <div className="shortcuts-lookup-row">
+            <input
+              type="text"
+              value={lookupQuery}
+              onChange={(e) => setLookupQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') shortcutLookup(lookupQuery); }}
+              placeholder="Type a label to lookup..."
+              className="shortcuts-input"
+            />
+            <button onClick={() => shortcutLookup(lookupQuery)} className="shortcuts-btn lookup-btn">Lookup</button>
+          </div>
+
+          <div className="shortcuts-add-row">
+            <input
+              type="text"
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+              placeholder="Label"
+              className="shortcuts-input shortcuts-label-input"
+            />
+            <input
+              type="text"
+              value={newContent}
+              onChange={(e) => setNewContent(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') addShortcut(); }}
+              placeholder="URL or command"
+              className="shortcuts-input shortcuts-content-input"
+            />
+            <button onClick={addShortcut} className="shortcuts-btn add-btn">Add</button>
+          </div>
+
+          <div className="shortcuts-list-header">
+            <span>{filteredShortcuts.length} shortcut{filteredShortcuts.length !== 1 ? 's' : ''}</span>
+            <button onClick={loadShortcuts} className="shortcuts-btn refresh-btn">Refresh</button>
+          </div>
+
+          <div className="shortcuts-list">
+            {filteredShortcuts.map((s, i) => {
+              const originalIndex = shortcuts.indexOf(s);
+              return (
+                <div key={originalIndex} className="shortcuts-item" onClick={() => copyShortcutContent(s)}>
+                  <span className="shortcuts-item-label">{s.label}</span>
+                  <span className="shortcuts-item-content">{s.content}</span>
+                  {copiedLabel === s.label && <span className="shortcuts-copied">Copied!</span>}
+                  <button
+                    className="shortcuts-delete-btn"
+                    onClick={(e) => { e.stopPropagation(); deleteShortcut(originalIndex); }}
+                    title="Delete"
+                  >&times;</button>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
