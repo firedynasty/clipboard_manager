@@ -164,6 +164,9 @@ function App() {
     if (!match && q.includes('.')) {
       const cleaned = q.split('.').join('');
       match = shortcuts.find(s => s.label.toLowerCase() === cleaned);
+      if (match) {
+        setLookupQuery(match.label);
+      }
     }
     // If still no match and signed in to Dropbox, try OpenAI dictation correction
     if (!match && dbxSignedIn) {
