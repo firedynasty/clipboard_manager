@@ -1,7 +1,6 @@
 // Vercel Serverless Function for OpenAI Chat
 // Environment variables (set in Vercel dashboard):
 // - OPENAI_API_KEY: Your OpenAI API key
-// - ACCESS_CODE: Password users must enter to use the key
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -17,12 +16,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { messages, accessCode } = req.body;
-
-  const validAccessCode = process.env.ACCESS_CODE;
-  if (accessCode !== validAccessCode) {
-    return res.status(401).json({ error: 'Invalid access code' });
-  }
+  const { messages } = req.body;
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {

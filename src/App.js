@@ -17,7 +17,6 @@ function App() {
   const [newLabel, setNewLabel] = useState('');
   const [newContent, setNewContent] = useState('');
   const [copiedLabel, setCopiedLabel] = useState(null);
-  const [accessCode, setAccessCode] = useState(() => localStorage.getItem('clipboardAccessCode') || '');
   const lookupRef = useRef(null);
   const labelRef = useRef(null);
   const contentRef = useRef(null);
@@ -135,13 +134,11 @@ function App() {
   };
 
   const correctDictation = async (text, labels) => {
-    if (!accessCode) return null;
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          accessCode,
           messages: [
             {
               role: 'system',
@@ -170,8 +167,8 @@ function App() {
         match = shortcuts.find(s => s.label.toLowerCase() === cleaned);
       }
     }
-    // If still no match, try OpenAI dictation correction
-    if (!match && accessCode) {
+    // If still no match and signed in to Dropbox, try OpenAI dictation correction
+    if (!match && dbxSignedIn) {
       const labels = shortcuts.map(s => s.label);
       const corrected = await correctDictation(q, labels);
       if (corrected) {
