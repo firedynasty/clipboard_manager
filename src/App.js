@@ -175,9 +175,12 @@ function App() {
     // If still no match and signed in to Dropbox, try OpenAI dictation correction
     if (!match && dbxSignedIn) {
       const labels = shortcuts.map(s => s.label);
+      console.log('Calling OpenAI with:', cleanedQ, 'labels:', labels);
       const corrected = await correctDictation(cleanedQ, labels);
+      console.log('OpenAI returned:', corrected);
       if (corrected) {
         match = shortcuts.find(s => s.label.toLowerCase() === corrected);
+        console.log('Match found:', match);
         if (match) {
           setCorrectedFrom({ from: q, to: match.label });
           setLookupQuery(match.label);
