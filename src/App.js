@@ -17,6 +17,7 @@ function App() {
   const [newLabel, setNewLabel] = useState('');
   const [newContent, setNewContent] = useState('');
   const [copiedLabel, setCopiedLabel] = useState(null);
+  const [accessCode, setAccessCode] = useState(() => localStorage.getItem('clipboardAccessCode') || '');
   const lookupRef = useRef(null);
   const labelRef = useRef(null);
   const contentRef = useRef(null);
@@ -133,10 +134,53 @@ function App() {
     }
   };
 
+  const correctDictation = async (text, labels) => {
+    if (!accessCode) return null;
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accessCode,
+          messages: [
+            {
+              role: 'system',
+              content: `You are a dictation corrector. The user dictated a shortcut label. Convert spoken numbers to digits (e.g., "two" -> "2", "too" -> "2", "to" -> "2", "one" -> "1", "won" -> "1"). Remove any trailing punctuation. Available labels: ${labels.join(', ')}. Return ONLY the corrected label, nothing else.`
+            },
+            { role: 'user', content: text }
+          ]
+        })
+      });
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data.content?.trim().toLowerCase().replace(/\./g, '') || null;
+    } catch {
+      return null;
+    }
+  };
+
   const shortcutLookup = async (query) => {
     const q = query.trim().toLowerCase();
     if (!q) return;
-    const match = shortcuts.find(s => s.label.toLowerCase() === q);
+    let match = shortcuts.find(s => s.label.toLowerCase() === q);
+    // If no match, try removing periods and retry
+    if (!match) {
+      const cleaned = q.replace(/\./g, '');
+      if (cleaned !== q) {
+        match = shortcuts.find(s => s.label.toLowerCase() === cleaned);
+      }
+    }
+    // If still no match, try OpenAI dictation correction
+    if (!match && accessCode) {
+      const labels = shortcuts.map(s => s.label);
+      const corrected = await correctDictation(q, labels);
+      if (corrected) {
+        match = shortcuts.find(s => s.label.toLowerCase() === corrected);
+        if (match) {
+          setLookupQuery(match.label);
+        }
+      }
+    }
     if (match) {
       try {
         await navigator.clipboard.writeText(match.content);
@@ -145,8 +189,6 @@ function App() {
       } catch {
         alert('Failed to copy to clipboard');
       }
-    } else {
-      alert('No shortcut found for "' + query.trim() + '"');
     }
   };
 
@@ -284,7 +326,18 @@ function App() {
         )}
 
         <div className="shortcuts-section">
-          <h2>Shortcuts</h2>
+          <div className="shortcuts-header">
+            <h2>Shortcuts</h2>
+            <button onClick={async () => {
+              try {
+                const text = await navigator.clipboard.readText();
+                setLookupQuery(text);
+                setTimeout(() => shortcutLookup(text), 500);
+              } catch {
+                alert('Failed to read from clipboard');
+              }
+            }} className="shortcuts-btn">Paste from Clipboard</button>
+          </div>
 
           <div className="shortcuts-lookup-row">
             <div className="input-wrap">

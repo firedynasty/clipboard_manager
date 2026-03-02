@@ -214,10 +214,17 @@ button:hover {
   padding-top: 20px;
 }
 
+.shortcuts-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
 .shortcuts-section h2 {
   font-size: 20px;
   color: #1f2937;
-  margin-bottom: 12px;
+  margin-bottom: 0;
 }
 
 .shortcuts-lookup-row,
