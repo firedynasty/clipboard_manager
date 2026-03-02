@@ -143,7 +143,7 @@ function App() {
           messages: [
             {
               role: 'system',
-              content: `You are a dictation corrector. The user dictated a shortcut label. Convert spoken numbers to digits (e.g., "two" -> "2", "too" -> "2", "to" -> "2", "one" -> "1", "won" -> "1"). Remove any trailing punctuation. Available labels: ${labels.join(', ')}. Return ONLY the corrected label, nothing else.`
+              content: `You are a dictation corrector. The user dictated a shortcut label. Match it to one of these available labels: ${labels.join(', ')}. Handle homophones (e.g., "too" matches "two", "won" matches "one"). Return ONLY the exact matching label from the list, nothing else.`
             },
             { role: 'user', content: text }
           ]
