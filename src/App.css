@@ -331,6 +331,14 @@ button:hover {
   background: #4b5563;
 }
 
+.paste-clip-btn {
+  background: #3b82f6;
+}
+
+.paste-clip-btn:hover {
+  background: #2563eb;
+}
+
 .shortcuts-list-header {
   display: flex;
   justify-content: space-between;

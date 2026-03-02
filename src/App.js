@@ -328,12 +328,14 @@ function App() {
             <button onClick={async () => {
               try {
                 const text = await navigator.clipboard.readText();
-                setLookupQuery(text);
-                setTimeout(() => shortcutLookup(text), 500);
-              } catch {
-                alert('Failed to read from clipboard');
+                const cleaned = text.trim();
+                setLookupQuery(cleaned);
+                setTimeout(() => shortcutLookup(cleaned), 500);
+              } catch (err) {
+                console.error('Clipboard error:', err);
+                alert('Failed to read from clipboard. Make sure you have granted clipboard permissions.');
               }
-            }} className="shortcuts-btn">Paste from Clipboard</button>
+            }} className="shortcuts-btn paste-clip-btn">Paste from Clipboard</button>
           </div>
 
           <div className="shortcuts-lookup-row">
