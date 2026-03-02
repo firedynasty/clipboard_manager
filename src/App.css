@@ -234,6 +234,15 @@ button:hover {
   margin-bottom: 10px;
 }
 
+.correction-display {
+  font-size: 13px;
+  color: #059669;
+  background: #ecfdf5;
+  padding: 6px 12px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
 .input-wrap {
   position: relative;
   display: flex;

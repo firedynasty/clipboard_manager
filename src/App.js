@@ -17,6 +17,7 @@ function App() {
   const [newLabel, setNewLabel] = useState('');
   const [newContent, setNewContent] = useState('');
   const [copiedLabel, setCopiedLabel] = useState(null);
+  const [correctedFrom, setCorrectedFrom] = useState(null);
   const lookupRef = useRef(null);
   const labelRef = useRef(null);
   const contentRef = useRef(null);
@@ -159,22 +160,26 @@ function App() {
   const shortcutLookup = async (query) => {
     const q = query.trim().toLowerCase();
     if (!q) return;
+    setCorrectedFrom(null);
     let match = shortcuts.find(s => s.label.toLowerCase() === q);
     // If no match and has period, try without period
+    let cleanedQ = q;
     if (!match && q.includes('.')) {
-      const cleaned = q.split('.').join('');
-      match = shortcuts.find(s => s.label.toLowerCase() === cleaned);
+      cleanedQ = q.split('.').join('');
+      match = shortcuts.find(s => s.label.toLowerCase() === cleanedQ);
       if (match) {
+        setCorrectedFrom({ from: q, to: match.label });
         setLookupQuery(match.label);
       }
     }
     // If still no match and signed in to Dropbox, try OpenAI dictation correction
     if (!match && dbxSignedIn) {
       const labels = shortcuts.map(s => s.label);
-      const corrected = await correctDictation(q, labels);
+      const corrected = await correctDictation(cleanedQ, labels);
       if (corrected) {
         match = shortcuts.find(s => s.label.toLowerCase() === corrected);
         if (match) {
+          setCorrectedFrom({ from: q, to: match.label });
           setLookupQuery(match.label);
         }
       }
@@ -345,15 +350,20 @@ function App() {
                 ref={lookupRef}
                 type="text"
                 value={lookupQuery}
-                onChange={(e) => setLookupQuery(e.target.value)}
+                onChange={(e) => { setLookupQuery(e.target.value); setCorrectedFrom(null); }}
                 onKeyDown={(e) => { if (e.key === 'Enter') shortcutLookup(lookupQuery); }}
                 placeholder="Type a label to lookup..."
                 className="shortcuts-input"
               />
-              <button className="input-clear-btn" onClick={() => { setLookupQuery(''); lookupRef.current.focus(); }}>&times;</button>
+              <button className="input-clear-btn" onClick={() => { setLookupQuery(''); setCorrectedFrom(null); lookupRef.current.focus(); }}>&times;</button>
             </div>
             <button onClick={() => shortcutLookup(lookupQuery)} className="shortcuts-btn lookup-btn">Lookup</button>
           </div>
+          {correctedFrom && (
+            <div className="correction-display">
+              Corrected: "{correctedFrom.from}" → "{correctedFrom.to}"
+            </div>
+          )}
 
           <div className="shortcuts-add-row">
             <div className="input-wrap">
