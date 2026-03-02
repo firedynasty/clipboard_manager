@@ -160,12 +160,10 @@ function App() {
     const q = query.trim().toLowerCase();
     if (!q) return;
     let match = shortcuts.find(s => s.label.toLowerCase() === q);
-    // If no match, try removing periods and retry
-    if (!match) {
-      const cleaned = q.replace(/\./g, '');
-      if (cleaned !== q) {
-        match = shortcuts.find(s => s.label.toLowerCase() === cleaned);
-      }
+    // If no match and has period, try without period
+    if (!match && q.includes('.')) {
+      const cleaned = q.split('.').join('');
+      match = shortcuts.find(s => s.label.toLowerCase() === cleaned);
     }
     // If still no match and signed in to Dropbox, try OpenAI dictation correction
     if (!match && dbxSignedIn) {
