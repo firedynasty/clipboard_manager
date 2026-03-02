@@ -174,16 +174,18 @@ function App() {
     }
     // If still no match and signed in to Dropbox, try OpenAI dictation correction
     if (!match && dbxSignedIn) {
-      const labels = shortcuts.map(s => s.label);
-      console.log('Calling OpenAI with:', cleanedQ, 'labels:', labels);
-      const corrected = await correctDictation(cleanedQ, labels);
-      console.log('OpenAI returned:', corrected);
-      if (corrected) {
-        match = shortcuts.find(s => s.label.toLowerCase() === corrected);
-        console.log('Match found:', match);
-        if (match) {
-          setCorrectedFrom({ from: q, to: match.label });
-          setLookupQuery(match.label);
+      const firstWord = cleanedQ.split(' ')[0];
+      const matchingLabels = shortcuts
+        .filter(s => s.label.toLowerCase().includes(firstWord))
+        .map(s => s.label);
+      if (matchingLabels.length > 0) {
+        const corrected = await correctDictation(cleanedQ, matchingLabels);
+        if (corrected) {
+          match = shortcuts.find(s => s.label.toLowerCase() === corrected);
+          if (match) {
+            setCorrectedFrom({ from: q, to: match.label });
+            setLookupQuery(match.label);
+          }
         }
       }
     }
