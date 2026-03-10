@@ -443,6 +443,12 @@ button:hover {
   margin: 0;
 }
 
+.prompts-path-hint {
+  font-size: 12px;
+  font-weight: 400;
+  color: #9ca3af;
+}
+
 .prompts-select {
   width: 100%;
   padding: 10px 12px;

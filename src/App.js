@@ -368,7 +368,7 @@ function App() {
 
         <div className="prompts-section">
           <div className="prompts-header">
-            <h2>Prompts</h2>
+            <h2>Prompts <span className="prompts-path-hint">(blob_vercel_replacement/clipboard_prompts)</span></h2>
             <button onClick={loadPromptFiles} className="shortcuts-btn refresh-btn" disabled={promptsLoading}>
               {promptsLoading ? 'Loading...' : 'Refresh'}
             </button>
