@@ -3,6 +3,7 @@ import './App.css';
 
 const DROPBOX_PATH = '/blob_vercel_replacement/blob_clipboard_content.txt';
 const QR_DROPBOX_PATH = '/blob_vercel_replacement/blob_clipboard_qr.txt';
+const PROMPTS_FOLDER = '/blob_vercel_replacement/clipboard_prompts';
 
 function App() {
   const [textboxContent, setTextboxContent] = useState('');
@@ -18,6 +19,8 @@ function App() {
   const [newContent, setNewContent] = useState('');
   const [copiedLabel, setCopiedLabel] = useState(null);
   const [correctedFrom, setCorrectedFrom] = useState(null);
+  const [promptFiles, setPromptFiles] = useState([]);
+  const [promptsLoading, setPromptsLoading] = useState(false);
   const lookupRef = useRef(null);
   const labelRef = useRef(null);
   const contentRef = useRef(null);
@@ -53,6 +56,11 @@ function App() {
       try {
         const text = await window.dropboxDownloadFile(QR_DROPBOX_PATH);
         if (text) setShortcuts(parseShortcuts(text));
+      } catch {}
+      // Load prompt files
+      try {
+        const files = await window.dropboxListFolder(PROMPTS_FOLDER);
+        if (files) setPromptFiles(files);
       } catch {}
     };
     loadData();
@@ -245,6 +253,31 @@ function App() {
     ? shortcuts.filter(s => s.label.toLowerCase().includes(lookupQuery.trim().toLowerCase()))
     : shortcuts;
 
+  const loadPromptFiles = useCallback(async () => {
+    if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) return;
+    setPromptsLoading(true);
+    try {
+      const files = await window.dropboxListFolder(PROMPTS_FOLDER);
+      setPromptFiles(files || []);
+    } catch {
+      setPromptFiles([]);
+    }
+    setPromptsLoading(false);
+  }, []);
+
+  const handlePromptSelect = async (path) => {
+    if (!path) return;
+    try {
+      const content = await window.dropboxDownloadFile(path);
+      if (content) {
+        await navigator.clipboard.writeText(content);
+        alert('Prompt copied to clipboard!');
+      }
+    } catch {
+      alert('Failed to load prompt file');
+    }
+  };
+
   const loadFromDropbox = async () => {
     if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) {
       alert('Sign in to Dropbox first');
@@ -332,6 +365,25 @@ function App() {
             </div>
           </div>
         )}
+
+        <div className="prompts-section">
+          <div className="prompts-header">
+            <h2>Prompts</h2>
+            <button onClick={loadPromptFiles} className="shortcuts-btn refresh-btn" disabled={promptsLoading}>
+              {promptsLoading ? 'Loading...' : 'Refresh'}
+            </button>
+          </div>
+          <select
+            className="prompts-select"
+            defaultValue=""
+            onChange={(e) => { handlePromptSelect(e.target.value); e.target.value = ''; }}
+          >
+            <option value="" disabled>Select a prompt to copy...</option>
+            {promptFiles.map((f) => (
+              <option key={f.path} value={f.path}>{f.name}</option>
+            ))}
+          </select>
+        </div>
 
         <div className="shortcuts-section">
           <div className="shortcuts-header">
