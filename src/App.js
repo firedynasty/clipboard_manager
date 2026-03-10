@@ -254,12 +254,18 @@ function App() {
     : shortcuts;
 
   const loadPromptFiles = useCallback(async () => {
-    if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) return;
+    console.log('[Prompts] Loading prompt files from:', PROMPTS_FOLDER);
+    if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) {
+      console.warn('[Prompts] No Dropbox access token available');
+      return;
+    }
     setPromptsLoading(true);
     try {
       const files = await window.dropboxListFolder(PROMPTS_FOLDER);
+      console.log('[Prompts] Loaded files:', files);
       setPromptFiles(files || []);
-    } catch {
+    } catch (err) {
+      console.error('[Prompts] Failed to load prompt files:', err);
       setPromptFiles([]);
     }
     setPromptsLoading(false);
@@ -267,19 +273,28 @@ function App() {
 
   const handlePromptSelect = (path) => {
     if (!path) return;
+    console.log('[Prompts] Selected path:', path);
     const dataPromise = window.dropboxDownloadFile(path).then(content => {
+      console.log('[Prompts] Dropbox response, content length:', content ? content.length : 0);
       if (!content) throw new Error('Empty content');
       return new Blob([content], { type: 'text/plain' });
+    }).catch(err => {
+      console.error('[Prompts] Dropbox fetch error:', err);
+      throw err;
     });
     try {
+      console.log('[Prompts] Attempting ClipboardItem write...');
       navigator.clipboard.write([
         new ClipboardItem({ 'text/plain': dataPromise })
       ]).then(() => {
+        console.log('[Prompts] ClipboardItem write succeeded');
         alert('Prompt copied to clipboard!');
-      }).catch(() => {
+      }).catch((err) => {
+        console.error('[Prompts] ClipboardItem write failed:', err);
         alert('Failed to copy to clipboard');
       });
-    } catch {
+    } catch (err) {
+      console.warn('[Prompts] ClipboardItem not supported, using fallback:', err);
       // Fallback for browsers that don't support ClipboardItem with promises
       dataPromise.then(blob => blob.text()).then(text => {
         const textarea = document.createElement('textarea');
@@ -288,10 +303,12 @@ function App() {
         textarea.style.opacity = '0';
         document.body.appendChild(textarea);
         textarea.select();
-        document.execCommand('copy');
+        const result = document.execCommand('copy');
+        console.log('[Prompts] execCommand fallback result:', result);
         document.body.removeChild(textarea);
         alert('Prompt copied to clipboard!');
-      }).catch(() => {
+      }).catch((err) => {
+        console.error('[Prompts] Fallback failed:', err);
         alert('Failed to load prompt file');
       });
     }
