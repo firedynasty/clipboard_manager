@@ -21,6 +21,8 @@ function App() {
   const [correctedFrom, setCorrectedFrom] = useState(null);
   const [promptFiles, setPromptFiles] = useState([]);
   const [promptsLoading, setPromptsLoading] = useState(false);
+  const [promptContent, setPromptContent] = useState(null);
+  const [promptName, setPromptName] = useState('');
   const lookupRef = useRef(null);
   const labelRef = useRef(null);
   const contentRef = useRef(null);
@@ -271,47 +273,43 @@ function App() {
     setPromptsLoading(false);
   }, []);
 
-  const handlePromptSelect = (path) => {
+  const handlePromptSelect = async (path, name) => {
     if (!path) return;
     console.log('[Prompts] Selected path:', path);
-    const dataPromise = window.dropboxDownloadFile(path).then(content => {
-      console.log('[Prompts] Dropbox response, content length:', content ? content.length : 0);
-      if (!content) throw new Error('Empty content');
-      return new Blob([content], { type: 'text/plain' });
-    }).catch(err => {
-      console.error('[Prompts] Dropbox fetch error:', err);
-      throw err;
-    });
     try {
-      console.log('[Prompts] Attempting ClipboardItem write...');
-      navigator.clipboard.write([
-        new ClipboardItem({ 'text/plain': dataPromise })
-      ]).then(() => {
-        console.log('[Prompts] ClipboardItem write succeeded');
-        alert('Prompt copied to clipboard!');
-      }).catch((err) => {
-        console.error('[Prompts] ClipboardItem write failed:', err);
-        alert('Failed to copy to clipboard');
-      });
+      const content = await window.dropboxDownloadFile(path);
+      console.log('[Prompts] Dropbox response, content length:', content ? content.length : 0);
+      if (content) {
+        setPromptContent(content);
+        setPromptName(name);
+      } else {
+        alert('Prompt file was empty');
+      }
     } catch (err) {
-      console.warn('[Prompts] ClipboardItem not supported, using fallback:', err);
-      // Fallback for browsers that don't support ClipboardItem with promises
-      dataPromise.then(blob => blob.text()).then(text => {
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        const result = document.execCommand('copy');
-        console.log('[Prompts] execCommand fallback result:', result);
-        document.body.removeChild(textarea);
-        alert('Prompt copied to clipboard!');
-      }).catch((err) => {
-        console.error('[Prompts] Fallback failed:', err);
-        alert('Failed to load prompt file');
-      });
+      console.error('[Prompts] Failed to fetch prompt:', err);
+      alert('Failed to load prompt file');
     }
+  };
+
+  const handleCopyPrompt = async () => {
+    if (!promptContent) return;
+    try {
+      await navigator.clipboard.writeText(promptContent);
+      console.log('[Prompts] Copied to clipboard via writeText');
+    } catch {
+      console.warn('[Prompts] writeText failed, using execCommand fallback');
+      const textarea = document.createElement('textarea');
+      textarea.value = promptContent;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    alert('Prompt copied to clipboard!');
+    setPromptContent(null);
+    setPromptName('');
   };
 
   const loadFromDropbox = async () => {
@@ -412,13 +410,21 @@ function App() {
           <select
             className="prompts-select"
             defaultValue=""
-            onChange={(e) => { handlePromptSelect(e.target.value); e.target.value = ''; }}
+            onChange={(e) => { handlePromptSelect(e.target.value, e.target.options[e.target.selectedIndex].text); e.target.value = ''; }}
           >
             <option value="" disabled>Select a prompt to copy...</option>
             {promptFiles.map((f) => (
               <option key={f.path} value={f.path}>{f.name}</option>
             ))}
           </select>
+          {promptContent && (
+            <div className="prompt-ready">
+              <span className="prompt-ready-name">{promptName}</span>
+              <button onClick={handleCopyPrompt} className="shortcuts-btn copy-prompt-btn">
+                Copy to Clipboard
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="shortcuts-section">
