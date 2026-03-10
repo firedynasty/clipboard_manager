@@ -265,31 +265,35 @@ function App() {
     setPromptsLoading(false);
   }, []);
 
-  const copyToClipboardFallback = (text) => {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textarea);
-  };
-
-  const handlePromptSelect = async (path) => {
+  const handlePromptSelect = (path) => {
     if (!path) return;
+    const dataPromise = window.dropboxDownloadFile(path).then(content => {
+      if (!content) throw new Error('Empty content');
+      return new Blob([content], { type: 'text/plain' });
+    });
     try {
-      const content = await window.dropboxDownloadFile(path);
-      if (content) {
-        try {
-          await navigator.clipboard.writeText(content);
-        } catch {
-          copyToClipboardFallback(content);
-        }
+      navigator.clipboard.write([
+        new ClipboardItem({ 'text/plain': dataPromise })
+      ]).then(() => {
         alert('Prompt copied to clipboard!');
-      }
+      }).catch(() => {
+        alert('Failed to copy to clipboard');
+      });
     } catch {
-      alert('Failed to load prompt file');
+      // Fallback for browsers that don't support ClipboardItem with promises
+      dataPromise.then(blob => blob.text()).then(text => {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        alert('Prompt copied to clipboard!');
+      }).catch(() => {
+        alert('Failed to load prompt file');
+      });
     }
   };
 
