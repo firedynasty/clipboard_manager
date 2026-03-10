@@ -265,12 +265,27 @@ function App() {
     setPromptsLoading(false);
   }, []);
 
+  const copyToClipboardFallback = (text) => {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  };
+
   const handlePromptSelect = async (path) => {
     if (!path) return;
     try {
       const content = await window.dropboxDownloadFile(path);
       if (content) {
-        await navigator.clipboard.writeText(content);
+        try {
+          await navigator.clipboard.writeText(content);
+        } catch {
+          copyToClipboardFallback(content);
+        }
         alert('Prompt copied to clipboard!');
       }
     } catch {
