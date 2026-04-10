@@ -335,21 +335,6 @@ function App() {
   return (
     <div className="App">
       <div className="container">
-        <div className="dropbox-bar">
-          {dbxSignedIn ? (
-            <>
-              <span className="dbx-status">Dropbox: Connected</span>
-              <button onClick={loadFromDropbox} className="dbx-link-btn">Load</button>
-              <button onClick={handleDropboxSignOut} className="dbx-link-btn">Sign Out</button>
-            </>
-          ) : (
-            <>
-              <span className="dbx-status">Dropbox: Not connected</span>
-              <button onClick={() => window.dropboxSignIn && window.dropboxSignIn()} className="dbx-link-btn">Sign In</button>
-            </>
-          )}
-        </div>
-
         <h1>Clipboard Manager</h1>
 
         <textarea
@@ -380,6 +365,21 @@ function App() {
           </button>
           <button onClick={append} className="save-button">
             Append
+          </button>
+          <button
+            onClick={() =>
+              dbxSignedIn ? loadFromDropbox() : (window.dropboxSignIn && window.dropboxSignIn())
+            }
+            onContextMenu={(e) => {
+              if (dbxSignedIn) {
+                e.preventDefault();
+                handleDropboxSignOut();
+              }
+            }}
+            className="dropbox-button"
+            title={dbxSignedIn ? 'Click to load. Right-click to sign out.' : 'Sign in to Dropbox'}
+          >
+            {dbxSignedIn ? 'DB: Load' : 'DB: Sign In'}
           </button>
         </div>
 
