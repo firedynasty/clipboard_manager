@@ -337,6 +337,18 @@ function App() {
       <div className="container">
         <h1>Clipboard Manager</h1>
 
+        <div className="tools-section">
+          <a href="/accumulator" className="tool-link">
+            <span className="tool-name">Clipboard Accumulator</span>
+            <span className="tool-desc">Append clipboard snippets into a single scrollable collection you can copy or download.</span>
+          </a>
+          <a href="/splitter" className="tool-link">
+            <span className="tool-name">Text Splitter</span>
+            <span className="tool-desc">Split markdown or structured text into individual sections and download each as a .txt file.</span>
+          </a>
+        </div>
+        <p className="tools-hint">Prompting is to divide the chat into subtopics.</p>
+
         <textarea
           value={textboxContent}
           onChange={(e) => setTextboxContent(e.target.value)}

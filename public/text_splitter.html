@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text Splitter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=Source+Serif+4:opsz,wght@8..60,300..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f0e6;
+    --paper-deep: #ebe4d4;
+    --ink: #1a1714;
+    --ink-soft: #4a4540;
+    --ink-faint: #8a847d;
+    --rule: #c9c0ad;
+    --accent: #8b2e2e;
+    --accent-soft: #b85c5c;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 16px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  body {
+    background-image:
+      radial-gradient(ellipse at top, rgba(255,255,255,0.4), transparent 60%),
+      radial-gradient(ellipse at bottom right, rgba(139,46,46,0.04), transparent 70%);
+  }
+
+  .app {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  header.masthead {
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .masthead-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 900;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .masthead-title em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--accent);
+  }
+
+  .masthead-meta {
+    font-family: 'Fraunces', serif;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--ink-soft);
+    border-left: 1px solid var(--rule);
+    padding-left: 1rem;
+  }
+
+  .masthead-meta span { display: block; }
+  .masthead-meta span:first-child { font-weight: 600; color: var(--ink); }
+
+  /* Input pane */
+  .pane {
+    background: rgba(255, 253, 248, 0.6);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1.5rem;
+  }
+
+  .pane-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper-deep);
+    flex-shrink: 0;
+  }
+
+  .pane-label {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink-soft);
+  }
+
+  .pane-label::before {
+    content: "\A7  ";
+    color: var(--accent);
+    font-weight: 400;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 180px;
+    max-height: 40vh;
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: vertical;
+    padding: 1.25rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.65;
+    color: var(--ink);
+  }
+
+  textarea::placeholder {
+    color: var(--ink-faint);
+    font-family: 'Source Serif 4', serif;
+    font-style: italic;
+    font-size: 0.95rem;
+  }
+
+  /* Delimiter config */
+  .config-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .config-label {
+    font-family: 'Fraunces', serif;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink-faint);
+    margin-right: 0.25rem;
+  }
+
+  .delimiter-btn {
+    background: var(--paper);
+    color: var(--ink);
+    border: 1px solid var(--rule);
+    padding: 0.4rem 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.15s;
+  }
+
+  .delimiter-btn:hover { border-color: var(--ink); }
+  .delimiter-btn.active {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+
+  .delimiter-custom {
+    background: rgba(255, 253, 248, 0.6);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 0.4rem 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--ink);
+    outline: none;
+    width: 120px;
+  }
+
+  .delimiter-custom:focus { border-color: var(--ink); }
+
+  /* Buttons */
+  .btn {
+    background: var(--paper);
+    color: var(--ink);
+    border: 1px solid var(--ink);
+    padding: 0.55rem 1.1rem;
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.15s;
+  }
+
+  .btn:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .btn.primary {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .btn.primary:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .btn.danger {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .btn.danger:hover {
+    background: var(--accent);
+    color: var(--paper);
+  }
+
+  .btn-mini {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.18em;
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+
+  .btn-mini:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--paper);
+  }
+
+  .btn.copied {
+    background: #e8f0e3;
+    color: #2c4a2c;
+    border-color: #6a8a6a;
+  }
+
+  .btn.copied::after {
+    content: " \2713";
+    color: #4a7d4a;
+  }
+
+  .actions-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .stats {
+    margin-left: auto;
+    font-family: 'Fraunces', serif;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--ink-faint);
+  }
+
+  .stats span { color: var(--ink); font-weight: 600; }
+
+  /* Sections list */
+  .sections-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .section-card {
+    background: rgba(255, 253, 248, 0.6);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    background: var(--paper-deep);
+    border-bottom: 1px solid var(--rule);
+    gap: 0.5rem;
+  }
+
+  .section-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--ink);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .section-title .num {
+    color: var(--accent);
+    margin-right: 0.4rem;
+  }
+
+  .section-meta {
+    font-family: 'Fraunces', serif;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-faint);
+    white-space: nowrap;
+  }
+
+  .section-actions {
+    display: flex;
+    gap: 0.3rem;
+  }
+
+  .section-body {
+    padding: 1rem 1.25rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 150px;
+    overflow-y: auto;
+  }
+
+  .empty-state {
+    padding: 3rem 2rem;
+    text-align: center;
+    color: var(--ink-faint);
+    font-style: italic;
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 1rem;
+  }
+
+  .help {
+    margin-top: 2rem;
+    padding: 1rem 1.25rem;
+    background: rgba(139, 46, 46, 0.04);
+    border-left: 3px solid var(--accent);
+    border-radius: 2px;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+
+  .help strong {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    color: var(--ink);
+    display: block;
+    margin-bottom: 0.3rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+  }
+
+  .help kbd {
+    background: var(--paper-deep);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 0.1rem 0.4rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header class="masthead">
+      <div>
+        <h1 class="masthead-title">Text <em>Splitter</em></h1>
+      </div>
+      <div class="masthead-meta">
+        <span>Split &amp; Download</span>
+        <span>Paste text · Get files</span>
+      </div>
+    </header>
+
+    <section class="pane">
+      <div class="pane-header">
+        <span class="pane-label">Paste your text</span>
+        <button class="btn btn-mini" id="pasteBtn">Paste Clipboard</button>
+      </div>
+      <textarea id="input" placeholder="Paste text with numbered sections here..."></textarea>
+    </section>
+
+    <div class="config-row">
+      <span class="config-label">Split by</span>
+      <button class="delimiter-btn active" data-delim="numbered">**1. Title**</button>
+      <button class="delimiter-btn" data-delim="heading">## Heading</button>
+      <button class="delimiter-btn" data-delim="blank">Blank line</button>
+      <button class="delimiter-btn" data-delim="hr">---</button>
+      <button class="delimiter-btn" data-delim="custom">Custom:</button>
+      <input type="text" class="delimiter-custom" id="customDelim" placeholder="e.g. ###" disabled>
+    </div>
+
+    <div class="actions-bar">
+      <button class="btn primary" id="splitBtn">Split</button>
+      <button class="btn" id="downloadAll">Download All (.txt)</button>
+      <button class="btn" id="copyAllBtn">Copy All Sections</button>
+      <button class="btn danger" id="clearBtn">Clear</button>
+      <div class="stats" id="stats"></div>
+    </div>
+
+    <div class="sections-list" id="sectionsList">
+      <div class="empty-state">
+        Paste your text above and click Split to see sections.
+      </div>
+    </div>
+
+    <div class="help">
+      <strong>How it works</strong>
+      Paste text with numbered subtopics (like <kbd>**1. Title**</kbd>), markdown headings, or any delimiter. Click Split to break it into individual sections. Download each as a <kbd>.txt</kbd> file or download all at once. The title from each section becomes the filename.
+    </div>
+  </div>
+
+<script>
+  const input = document.getElementById('input');
+  const sectionsList = document.getElementById('sectionsList');
+  const statsEl = document.getElementById('stats');
+  const customDelimInput = document.getElementById('customDelim');
+
+  let sections = []; // { title: string, body: string }
+  let activeDelim = 'numbered';
+
+  // Delimiter buttons
+  document.querySelectorAll('.delimiter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.delimiter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeDelim = btn.dataset.delim;
+      customDelimInput.disabled = activeDelim !== 'custom';
+      if (activeDelim === 'custom') customDelimInput.focus();
+    });
+  });
+
+  // Paste clipboard
+  document.getElementById('pasteBtn').addEventListener('click', async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      input.value = text;
+    } catch (err) {
+      input.focus();
+    }
+  });
+
+  // Split logic
+  function splitText(raw) {
+    if (!raw || !raw.trim()) return [];
+
+    const text = raw.replace(/\r\n/g, '\n');
+
+    switch (activeDelim) {
+      case 'numbered':
+        return splitByNumbered(text);
+      case 'heading':
+        return splitByHeading(text);
+      case 'blank':
+        return splitByBlankLine(text);
+      case 'hr':
+        return splitByHR(text);
+      case 'custom':
+        return splitByCustom(text);
+      default:
+        return splitByNumbered(text);
+    }
+  }
+
+  function splitByNumbered(text) {
+    // Split on lines like **1. Title** or **2. Something** (bold numbered headings)
+    const pattern = /^\*\*\d+\.\s+/m;
+    const lines = text.split('\n');
+    const results = [];
+    let current = null;
+    let preamble = [];
+
+    for (const line of lines) {
+      if (pattern.test(line.trim())) {
+        if (current) results.push(current);
+        // Extract title: strip ** markers and the number prefix
+        let title = line.trim()
+          .replace(/^\*\*/, '')
+          .replace(/\*\*.*$/, '')  // strip closing ** and anything after
+          .trim();
+        // Also handle case where ** is not closed on same segment
+        if (title.endsWith('**')) title = title.slice(0, -2).trim();
+        // Strip leading number prefix like "1. " to avoid double-numbering
+        title = title.replace(/^\d+\.\s*/, '').trim();
+        current = { title, body: '' };
+      } else if (current) {
+        current.body += (current.body ? '\n' : '') + line;
+      } else {
+        preamble.push(line);
+      }
+    }
+    if (current) results.push(current);
+
+    // If there's a preamble with content, prepend as first section
+    const preambleText = preamble.join('\n').trim();
+    if (preambleText && results.length > 0) {
+      results.unshift({ title: 'Introduction', body: preambleText });
+    } else if (preambleText && results.length === 0) {
+      results.push({ title: 'Full Text', body: preambleText });
+    }
+
+    // Trim bodies
+    results.forEach(s => s.body = s.body.trim());
+    return results;
+  }
+
+  function splitByHeading(text) {
+    const lines = text.split('\n');
+    const results = [];
+    let current = null;
+    let preamble = [];
+    let docTitle = '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+
+      // # Title — document title, goes into preamble
+      if (/^#\s+/.test(trimmed) && !/^##/.test(trimmed)) {
+        docTitle = trimmed.replace(/^#\s+/, '').trim();
+        preamble.push(line);
+        continue;
+      }
+
+      // ## Section — split point (but NOT ### or deeper)
+      if (/^##\s+/.test(trimmed) && !/^###/.test(trimmed)) {
+        if (current) results.push(current);
+        const title = trimmed.replace(/^##\s+/, '').replace(/^\d+\.\s*/, '').trim();
+        current = { title, body: '' };
+        continue;
+      }
+
+      // Everything else (###, text, ---, bullets) stays in current section or preamble
+      if (current) {
+        current.body += (current.body ? '\n' : '') + line;
+      } else {
+        preamble.push(line);
+      }
+    }
+    if (current) results.push(current);
+
+    // Preamble = everything before the first ## (doc title + intro text)
+    const preambleText = preamble.join('\n').trim();
+    if (preambleText && results.length > 0) {
+      const introTitle = docTitle || 'Introduction';
+      results.unshift({ title: introTitle, body: preambleText });
+    } else if (preambleText && results.length === 0) {
+      results.push({ title: docTitle || 'Full Text', body: preambleText });
+    }
+
+    results.forEach(s => s.body = s.body.trim());
+    return results;
+  }
+
+  function splitByBlankLine(text) {
+    const blocks = text.split(/\n{2,}/).map(b => b.trim()).filter(Boolean);
+    return blocks.map((block, i) => {
+      const firstLine = block.split('\n')[0].slice(0, 60).trim();
+      return { title: firstLine || 'Section ' + (i + 1), body: block };
+    });
+  }
+
+  function splitByHR(text) {
+    const parts = text.split(/\n---+\n/).map(b => b.trim()).filter(Boolean);
+    return parts.map((part, i) => {
+      const firstLine = part.split('\n')[0].slice(0, 60).trim();
+      return { title: firstLine || 'Section ' + (i + 1), body: part };
+    });
+  }
+
+  function splitByCustom(text) {
+    const delim = customDelimInput.value;
+    if (!delim) return [{ title: 'Full Text', body: text.trim() }];
+    const parts = text.split(delim).map(b => b.trim()).filter(Boolean);
+    return parts.map((part, i) => {
+      const firstLine = part.split('\n')[0].slice(0, 60).trim();
+      return { title: firstLine || 'Section ' + (i + 1), body: part };
+    });
+  }
+
+  function slugify(text) {
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .slice(0, 60) || 'section';
+  }
+
+  function renderSections() {
+    if (sections.length === 0) {
+      sectionsList.innerHTML = '<div class="empty-state">Paste your text above and click Split to see sections.</div>';
+      statsEl.textContent = '';
+      return;
+    }
+
+    sectionsList.innerHTML = '';
+    sections.forEach((section, i) => {
+      const card = document.createElement('div');
+      card.className = 'section-card';
+
+      const wordCount = section.body.trim().split(/\s+/).filter(Boolean).length;
+
+      card.innerHTML =
+        '<div class="section-header">' +
+          '<div class="section-title"><span class="num">' + (i + 1) + '.</span>' + escapeHtml(section.title) + '</div>' +
+          '<span class="section-meta">' + wordCount + ' words</span>' +
+          '<div class="section-actions">' +
+            '<button class="btn btn-mini copy-section" data-index="' + i + '">Copy</button>' +
+            '<button class="btn btn-mini dl-section" data-index="' + i + '">Download</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="section-body">' + escapeHtml(section.body) + '</div>';
+
+      sectionsList.appendChild(card);
+    });
+
+    const totalWords = sections.reduce((sum, s) => sum + s.body.trim().split(/\s+/).filter(Boolean).length, 0);
+    statsEl.innerHTML = '<span>' + sections.length + '</span> sections · <span>' + totalWords.toLocaleString() + '</span> words';
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // Split button
+  document.getElementById('splitBtn').addEventListener('click', () => {
+    sections = splitText(input.value);
+    renderSections();
+  });
+
+  // Also split on paste after short delay
+  input.addEventListener('input', () => {
+    if (input.value.trim()) {
+      sections = splitText(input.value);
+      renderSections();
+    }
+  });
+
+  // Download single section
+  sectionsList.addEventListener('click', (e) => {
+    const copyBtn = e.target.closest('.copy-section');
+    const dlBtn = e.target.closest('.dl-section');
+
+    if (copyBtn) {
+      const idx = parseInt(copyBtn.dataset.index);
+      const section = sections[idx];
+      const text = section.title + '\n\n' + section.body;
+      navigator.clipboard.writeText(text).then(() => flashCopied(copyBtn));
+      return;
+    }
+
+    if (dlBtn) {
+      const idx = parseInt(dlBtn.dataset.index);
+      downloadSection(sections[idx], idx);
+      return;
+    }
+  });
+
+  function downloadSection(section, index) {
+    const text = section.title + '\n\n' + section.body;
+    const filename = (index + 1) + '-' + slugify(section.title) + '.txt';
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // Download all
+  document.getElementById('downloadAll').addEventListener('click', () => {
+    if (sections.length === 0) return;
+    sections.forEach((section, i) => {
+      setTimeout(() => downloadSection(section, i), i * 150);
+    });
+  });
+
+  // Copy all sections as one text
+  document.getElementById('copyAllBtn').addEventListener('click', async (e) => {
+    if (sections.length === 0) return;
+    const full = sections.map((s, i) => s.title + '\n\n' + s.body).join('\n\n---\n\n');
+    try {
+      await navigator.clipboard.writeText(full);
+      flashCopied(e.target);
+    } catch (err) {}
+  });
+
+  // Clear
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    input.value = '';
+    sections = [];
+    renderSections();
+  });
+
+  function flashCopied(btn) {
+    const original = btn.textContent;
+    btn.classList.add('copied');
+    btn.textContent = 'Copied';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.textContent = original;
+    }, 1400);
+  }
+</script>
+</body>
+</html>
