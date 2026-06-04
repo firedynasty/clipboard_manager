@@ -562,9 +562,10 @@
   }
 
   // Split-aware append: if text has --- separators, split into individual snippets
+  // Matches 3+ dashes/underscores/equals (covers raw ---, pandoc horizontal rules, etc.)
   function appendWithSplit(text) {
     if (!text || !text.trim()) return;
-    const segments = text.split(/\n---\n/).map(s => s.trim()).filter(Boolean);
+    const segments = text.split(/\n\s*[-_=]{3,}\s*\n/).map(s => s.trim()).filter(Boolean);
     if (segments.length > 1) {
       segments.forEach(seg => appendText(seg));
     } else {
@@ -694,8 +695,8 @@
       const text = await navigator.clipboard.readText();
       if (!text || !text.trim()) return;
 
-      // Split by --- separator (the format clipboard_append.sh uses)
-      const segments = text.split(/\n---\n/).map(s => s.trim()).filter(Boolean);
+      // Split by --- or longer dash lines (pandoc converts --- to horizontal rules)
+      const segments = text.split(/\n\s*[-_=]{3,}\s*\n/).map(s => s.trim()).filter(Boolean);
 
       if (segments.length > 1) {
         // Multiple segments found — add each as its own snippet
