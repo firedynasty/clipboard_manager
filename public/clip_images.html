@@ -468,8 +468,6 @@
     formData.append('file', file);
     formData.append('upload_preset', UPLOAD_PRESET);
     formData.append('public_id', s.id);
-    formData.append('overwrite', 'true');
-    formData.append('invalidate', 'true');
 
     try {
       const res = await fetch(
