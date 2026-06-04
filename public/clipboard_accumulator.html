@@ -161,26 +161,29 @@
     margin-bottom: 1rem;
   }
 
-  .quick-add input {
+  .quick-add textarea {
     flex: 1;
     background: rgba(255, 253, 248, 0.6);
     border: 1px solid var(--rule);
     border-radius: 2px;
     padding: 0.6rem 1rem;
-    font-family: 'Source Serif 4', Georgia, serif;
-    font-size: 0.95rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
     color: var(--ink);
     outline: none;
     transition: border-color 0.15s;
+    resize: vertical;
+    line-height: 1.5;
   }
 
-  .quick-add input:focus {
+  .quick-add textarea:focus {
     border-color: var(--ink);
   }
 
-  .quick-add input::placeholder {
+  .quick-add textarea::placeholder {
     color: var(--ink-faint);
     font-style: italic;
+    font-family: 'Source Serif 4', Georgia, serif;
   }
 
   /* Accumulated text pane */
@@ -266,18 +269,82 @@
     border-bottom: none;
   }
 
+  .clip-block-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .clip-block-check {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
   .clip-block-meta {
     font-size: 0.65rem;
     color: var(--ink-faint);
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    margin-bottom: 0.3rem;
     font-family: 'Fraunces', serif;
+    flex: 1;
+  }
+
+  .clip-block-copy {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    background: var(--paper);
+    color: var(--ink-soft);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .clip-block-copy:hover {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+
+  .clip-block-copy.copied {
+    background: #e8f0e3;
+    color: #2c4a2c;
+    border-color: #6a8a6a;
+  }
+
+  .clip-block-delete {
+    padding: 0.2rem 0.45rem;
+    font-size: 0.6rem;
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    background: var(--paper);
+    color: var(--ink-faint);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .clip-block-delete:hover {
+    background: var(--accent);
+    color: var(--paper);
+    border-color: var(--accent);
   }
 
   .clip-block-text {
     white-space: pre-wrap;
     word-wrap: break-word;
+    padding-left: 1.6rem;
   }
 
   /* Flash for append feedback */
@@ -336,6 +403,7 @@
 
     <div class="actions-bar">
       <button class="btn primary" id="appendClipboard">Append Clipboard</button>
+      <button class="btn" id="copySelected">Copy Selected</button>
       <button class="btn" id="copyAll">Copy All</button>
       <button class="btn" id="downloadTxt">Download .txt</button>
       <button class="btn danger" id="clearAll">Clear</button>
@@ -343,7 +411,7 @@
     </div>
 
     <div class="quick-add">
-      <input type="text" id="quickInput" placeholder="Type or paste text here and press Enter to append&hellip;">
+      <textarea id="quickInput" rows="3" placeholder="Paste text here and press Ctrl+Enter to append. Content with --- separators auto-splits into snippets."></textarea>
       <button class="btn btn-mini" id="quickAddBtn">Add</button>
     </div>
 
@@ -361,7 +429,7 @@
 
     <div class="help">
       <strong>How it works</strong>
-      Click <em>Append Clipboard</em> to grab your clipboard and add it to the stack. Use the input field to type or paste additional text. Each snippet is separated and timestamped. <em>Copy All</em> copies the full accumulated text. <kbd>Ctrl/Cmd + V</kbd> in the input + <kbd>Enter</kbd> for quick appends.
+      Click <em>Append Clipboard</em> to grab your clipboard. Content with <code>---</code> separators auto-splits into individual snippets. Use checkboxes to select snippets, then <em>Copy Selected</em> for just those, or <em>Copy All</em> for everything. Each snippet has its own Copy and Delete buttons. <kbd>Cmd+2</kbd> → type <kbd>a</kbd> to send collected clipboard here automatically.
     </div>
   </div>
 
@@ -417,10 +485,37 @@
       const block = document.createElement('div');
       block.className = 'clip-block';
 
-      const meta = document.createElement('div');
+      const header = document.createElement('div');
+      header.className = 'clip-block-header';
+
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.className = 'clip-block-check';
+      check.dataset.index = i;
+      header.appendChild(check);
+
+      const meta = document.createElement('span');
       meta.className = 'clip-block-meta';
       meta.textContent = 'Snippet ' + (i + 1);
-      block.appendChild(meta);
+      header.appendChild(meta);
+
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'clip-block-copy';
+      copyBtn.textContent = 'Copy';
+      copyBtn.addEventListener('click', () => copySnippet(i, copyBtn));
+      header.appendChild(copyBtn);
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'clip-block-delete';
+      delBtn.textContent = '\u00D7';
+      delBtn.addEventListener('click', () => {
+        blocks.splice(i, 1);
+        save();
+        renderBlocks();
+      });
+      header.appendChild(delBtn);
+
+      block.appendChild(header);
 
       const content = document.createElement('div');
       content.className = 'clip-block-text';
@@ -431,6 +526,23 @@
     });
 
     updateStats();
+  }
+
+  async function copySnippet(index, btn) {
+    try {
+      await navigator.clipboard.writeText(blocks[index]);
+    } catch (err) {
+      const ta = document.createElement('textarea');
+      ta.value = blocks[index];
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    const orig = btn.textContent;
+    btn.classList.add('copied');
+    btn.textContent = 'Copied';
+    setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 1400);
   }
 
   function appendText(text) {
@@ -449,18 +561,29 @@
     }
   }
 
+  // Split-aware append: if text has --- separators, split into individual snippets
+  function appendWithSplit(text) {
+    if (!text || !text.trim()) return;
+    const segments = text.split(/\n---\n/).map(s => s.trim()).filter(Boolean);
+    if (segments.length > 1) {
+      segments.forEach(seg => appendText(seg));
+    } else {
+      appendText(text);
+    }
+  }
+
   // Append from clipboard
   document.getElementById('appendClipboard').addEventListener('click', async () => {
     // If the input field has text, append it first as its own snippet
     const inputText = quickInput.value.trim();
     if (inputText) {
-      appendText(inputText);
+      appendWithSplit(inputText);
       quickInput.value = '';
     }
 
     try {
       const text = await navigator.clipboard.readText();
-      appendText(text);
+      appendWithSplit(text);
     } catch (err) {
       // Clipboard API denied — prompt user to paste manually
       quickInput.focus();
@@ -472,13 +595,13 @@
   function handleQuickAdd() {
     const text = quickInput.value;
     if (!text.trim()) return;
-    appendText(text);
+    appendWithSplit(text);
     quickInput.value = '';
   }
 
   document.getElementById('quickAddBtn').addEventListener('click', handleQuickAdd);
   quickInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       handleQuickAdd();
     }
@@ -503,6 +626,25 @@
 
   document.getElementById('copyAll').addEventListener('click', (e) => copyAll(e.target));
   document.getElementById('copyTop').addEventListener('click', (e) => copyAll(e.target));
+
+  // Copy Selected — only checked snippets
+  document.getElementById('copySelected').addEventListener('click', async (e) => {
+    const checks = accumulated.querySelectorAll('.clip-block-check:checked');
+    if (checks.length === 0) return;
+    const selected = Array.from(checks).map(cb => blocks[parseInt(cb.dataset.index)]);
+    const text = selected.join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (err) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    flashCopied(e.target);
+  });
 
   // Download .txt
   document.getElementById('downloadTxt').addEventListener('click', () => {
@@ -539,6 +681,34 @@
   // Load on start
   load();
   renderBlocks();
+
+  // Auto-import: when opened with ?import=1, read clipboard and split by ---
+  (async function autoImport() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('import') !== '1') return;
+
+    // Clean URL so refresh doesn't re-import
+    window.history.replaceState({}, '', window.location.pathname);
+
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text || !text.trim()) return;
+
+      // Split by --- separator (the format clipboard_append.sh uses)
+      const segments = text.split(/\n---\n/).map(s => s.trim()).filter(Boolean);
+
+      if (segments.length > 1) {
+        // Multiple segments found — add each as its own snippet
+        segments.forEach(seg => appendText(seg));
+      } else {
+        // No --- separators, add as single block
+        appendText(text);
+      }
+    } catch (err) {
+      quickInput.focus();
+      quickInput.placeholder = 'Clipboard access denied — paste here manually, content will auto-split by ---';
+    }
+  })();
 </script>
 </body>
 </html>
