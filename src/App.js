@@ -5,6 +5,7 @@ const DROPBOX_PATH = '/blob_vercel_replacement/blob_clipboard_content.txt';
 const QR_DROPBOX_PATH = '/blob_vercel_replacement/blob_clipboard_qr.txt';
 const PROMPTS_FOLDER = '/blob_vercel_replacement/clipboard_prompts';
 
+
 function App() {
   const [textboxContent, setTextboxContent] = useState('');
   const [savedContent, setSavedContent] = useState('');
@@ -23,6 +24,7 @@ function App() {
   const [promptsLoading, setPromptsLoading] = useState(false);
   const [promptContent, setPromptContent] = useState(null);
   const [promptName, setPromptName] = useState('');
+
   const lookupRef = useRef(null);
   const labelRef = useRef(null);
   const contentRef = useRef(null);
@@ -345,6 +347,10 @@ function App() {
           <a href="/splitter" className="tool-link">
             <span className="tool-name">Text Splitter</span>
             <span className="tool-desc">Split markdown or structured text into individual sections and download each as a .txt file.</span>
+          </a>
+          <a href="/images" className="tool-link">
+            <span className="tool-name">Clip Images</span>
+            <span className="tool-desc">Upload images from your phone and view them on your laptop. 5 replaceable slots.</span>
           </a>
         </div>
         <p className="tools-hint">Prompting is to divide the chat into subtopics.</p>
