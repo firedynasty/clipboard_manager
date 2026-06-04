@@ -456,7 +456,7 @@
   }
 
   function getAllText() {
-    return blocks.join('\n');
+    return blocks.join('\n\n');
   }
 
   function updateStats() {
@@ -640,7 +640,7 @@
     const checks = accumulated.querySelectorAll('.clip-block-check:checked');
     if (checks.length === 0) return;
     const selected = Array.from(checks).map(cb => blocks[parseInt(cb.dataset.index)]);
-    const text = selected.join('\n');
+    const text = selected.join('\n\n');
     try {
       await navigator.clipboard.writeText(text);
     } catch (err) {
