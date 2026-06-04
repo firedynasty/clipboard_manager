@@ -378,6 +378,7 @@
         <span class="slot-label">Slot ${i + 1}</span>
         <div class="slot-actions">
           <button class="btn-mini upload-btn" data-slot="${i}">Upload</button>
+          <button class="btn-mini save-btn" data-slot="${i}" style="display:none;">Save</button>
           <button class="btn-mini danger clear-btn" data-slot="${i}">Clear</button>
         </div>
       </div>
@@ -396,6 +397,7 @@
       url: null,
       body: slot.querySelector('.slot-body'),
       fileInput: slot.querySelector('input[type="file"]'),
+      saveBtn: slot.querySelector('.save-btn'),
     });
   }
 
@@ -411,6 +413,28 @@
     btn.addEventListener('click', () => {
       const i = parseInt(btn.dataset.slot);
       slots[i].fileInput.click();
+    });
+  });
+
+  // Save button - download image as file
+  document.querySelectorAll('.save-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const i = parseInt(btn.dataset.slot);
+      const s = slots[i];
+      if (!s.url) return;
+      try {
+        const res = await fetch(s.url);
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = s.id + '.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+      } catch (err) {
+        alert('Failed to save image: ' + err.message);
+      }
     });
   });
 
@@ -438,11 +462,13 @@
     if (s.loading) {
       s.body.innerHTML = '<div class="slot-loading">Uploading</div>';
       s.body.classList.remove('has-image');
+      s.saveBtn.style.display = 'none';
       return;
     }
     if (s.url) {
       s.body.innerHTML = `<img src="${s.url}" alt="Slot ${i + 1}">`;
       s.body.classList.add('has-image');
+      s.saveBtn.style.display = '';
       // Click image to expand
       s.body.querySelector('img').addEventListener('click', () => {
         overlayImg.src = s.url;
@@ -456,6 +482,7 @@
         </div>
       `;
       s.body.classList.remove('has-image');
+      s.saveBtn.style.display = 'none';
     }
   }
 
