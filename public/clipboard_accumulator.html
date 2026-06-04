@@ -644,7 +644,28 @@
   }
 
   document.getElementById('copyAll').addEventListener('click', (e) => copyAll(e.target));
-  document.getElementById('copyTop').addEventListener('click', (e) => copyAll(e.target));
+  document.getElementById('copyTop').addEventListener('click', (e) => copySelectedOrAll(e.target));
+
+  // Copy selected if any checked, otherwise copy all
+  async function copySelectedOrAll(btn) {
+    if (blocks.length === 0) return;
+    const checks = accumulated.querySelectorAll('.clip-block-check:checked');
+    const uniqueIndices = [...new Set(Array.from(checks).map(cb => parseInt(cb.dataset.index)).filter(i => !isNaN(i)))];
+    const text = uniqueIndices.length > 0
+      ? uniqueIndices.map(i => blocks[i]).join('\n\n')
+      : getAllText();
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (err) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    flashCopied(btn);
+  }
 
   // Select all toggle
   document.getElementById('selectAll').addEventListener('change', (e) => {
