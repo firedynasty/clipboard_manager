@@ -403,6 +403,7 @@
 
     <div class="actions-bar">
       <button class="btn primary" id="appendClipboard">Append Clipboard</button>
+      <input type="checkbox" id="selectAll" class="clip-block-check" title="Select / deselect all">
       <button class="btn" id="copySelected">Copy Selected</button>
       <button class="btn" id="copyAll">Copy All</button>
       <button class="btn" id="downloadTxt">Download .txt</button>
@@ -627,6 +628,12 @@
 
   document.getElementById('copyAll').addEventListener('click', (e) => copyAll(e.target));
   document.getElementById('copyTop').addEventListener('click', (e) => copyAll(e.target));
+
+  // Select all toggle
+  document.getElementById('selectAll').addEventListener('change', (e) => {
+    const checks = accumulated.querySelectorAll('.clip-block-check');
+    checks.forEach(cb => cb.checked = e.target.checked);
+  });
 
   // Copy Selected — only checked snippets
   document.getElementById('copySelected').addEventListener('click', async (e) => {
