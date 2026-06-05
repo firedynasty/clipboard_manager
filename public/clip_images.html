@@ -338,6 +338,7 @@
       <button class="btn primary" id="refreshAll">Refresh All</button>
       <button class="btn danger" id="clearAll">Clear All</button>
       <button class="btn" id="dbxBtn">DB: Sign In</button>
+      <button class="btn" id="saveAllBtn">Save All</button>
     </div>
 
     <div class="slots-grid" id="slotsGrid"></div>
@@ -805,6 +806,27 @@
       renderSlot(i);
     });
     await saveSlotUrls();
+  });
+
+  // Save all loaded images
+  document.getElementById('saveAllBtn').addEventListener('click', async () => {
+    const loaded = slots.filter(s => s.url);
+    if (loaded.length === 0) { alert('No images to save.'); return; }
+    for (const s of loaded) {
+      try {
+        const res = await fetch(s.url);
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = s.id + '.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+      } catch (err) {
+        console.error('Failed to save ' + s.id + ':', err);
+      }
+    }
   });
 
   // Load on startup
