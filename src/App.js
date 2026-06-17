@@ -12,6 +12,8 @@ function App() {
   const [autoSave, setAutoSave] = useState(false);
   const autoSaveTimer = useRef(null);
   const [dbxSignedIn, setDbxSignedIn] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'saved'
 
   // Shortcuts state
   const [shortcuts, setShortcuts] = useState([]);
@@ -28,6 +30,12 @@ function App() {
   const lookupRef = useRef(null);
   const labelRef = useRef(null);
   const contentRef = useRef(null);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const parseShortcuts = (text) => {
     if (!text) return [];
@@ -107,9 +115,14 @@ function App() {
 
   const save = async () => {
     if (textboxContent.trim()) {
+      setSaveStatus('saving');
       try {
         await saveContent(textboxContent);
+        if (isMobile) setTextboxContent('');
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus(null), 2000);
       } catch (error) {
+        setSaveStatus(null);
         alert('Failed to save to Dropbox');
       }
     }
@@ -117,12 +130,17 @@ function App() {
 
   const append = async () => {
     if (textboxContent.trim()) {
+      setSaveStatus('saving');
       try {
         const combined = savedContent
           ? savedContent + '\n' + textboxContent
           : textboxContent;
         await saveContent(combined);
+        if (isMobile) setTextboxContent('');
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus(null), 2000);
       } catch (error) {
+        setSaveStatus(null);
         alert('Failed to append to Dropbox');
       }
     }
@@ -321,8 +339,14 @@ function App() {
     }
     try {
       const content = await window.dropboxDownloadFile(DROPBOX_PATH);
-      if (content) setSavedContent(content);
-      else alert('No saved content found in Dropbox');
+      if (content) {
+        setSavedContent(content);
+        try {
+          await navigator.clipboard.writeText(content);
+        } catch {}
+      } else {
+        alert('No saved content found in Dropbox');
+      }
     } catch {
       alert('Failed to load from Dropbox');
     }
@@ -372,18 +396,24 @@ function App() {
         </div>
 
         <div className="buttons">
-          <button onClick={pasteFromClipboard} className="paste-button">
-            Paste from Clipboard
+          {!isMobile && (
+            <button onClick={pasteFromClipboard} className="paste-button">
+              Paste from Clipboard
+            </button>
+          )}
+          {!isMobile && (
+            <button onClick={() => setTextboxContent(savedContent)} className="paste-button">
+              Paste from Saved
+            </button>
+          )}
+          <button onClick={save} className="save-button" disabled={saveStatus === 'saving'}>
+            {isMobile && saveStatus === 'saving' ? 'Saving…' : 'Save'}
           </button>
-          <button onClick={() => setTextboxContent(savedContent)} className="paste-button">
-            Paste from Saved
-          </button>
-          <button onClick={save} className="save-button">
-            Save
-          </button>
-          <button onClick={append} className="save-button">
-            Append
-          </button>
+          {!isMobile && (
+            <button onClick={append} className="save-button">
+              Append
+            </button>
+          )}
           <button
             onClick={() =>
               dbxSignedIn ? loadFromDropbox() : (window.dropboxSignIn && window.dropboxSignIn())
@@ -397,22 +427,25 @@ function App() {
             className="dropbox-button"
             title={dbxSignedIn ? 'Click to load. Right-click to sign out.' : 'Sign in to Dropbox'}
           >
-            {dbxSignedIn ? 'DB: Load' : 'DB: Sign In'}
+            {dbxSignedIn ? (isMobile ? 'Dropbox ✓' : 'DB: Load') : (isMobile ? 'Sign in to Dropbox' : 'DB: Sign In')}
           </button>
         </div>
+        {saveStatus === 'saved' && (
+          <div className="save-status-banner">✓ Saved to Dropbox</div>
+        )}
 
         {savedContent && (
           <div className="saved-section">
             <div className="saved-content">{savedContent}</div>
             <div className="saved-actions">
+              <button onClick={loadFromDropbox} className="go-link-button">
+                Refresh
+              </button>
               <button onClick={copyToClipboard} className="copy-button">
                 Copy to Clipboard
               </button>
               <button onClick={goToLink} className="go-link-button">
                 Go to Link
-              </button>
-              <button onClick={loadFromDropbox} className="go-link-button">
-                Refresh
               </button>
             </div>
           </div>

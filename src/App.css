@@ -517,16 +517,97 @@ button:hover {
   background: #16a34a !important;
 }
 
+/* Save status banner */
+.save-status-banner {
+  margin-top: 12px;
+  padding: 10px 16px;
+  background: #ecfdf5;
+  border: 1.5px solid #6ee7b7;
+  border-radius: 8px;
+  color: #065f46;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  animation: fadeInOut 0.3s ease;
+}
+
+@keyframes fadeInOut {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 @media (max-width: 768px) {
   .container {
-    padding: 20px;
+    padding: 20px 16px;
+    border-radius: 12px;
   }
 
   h1 {
-    font-size: 24px;
+    font-size: 22px;
+    margin-bottom: 16px;
   }
 
+  /* Hide desktop-only sections on mobile */
+  .tools-section,
+  .tools-hint,
+  .shortcuts-section,
+  .prompts-section,
+  .auto-save-toggle {
+    display: none;
+  }
+
+  /* Big, easy-to-tap textarea */
+  textarea {
+    font-size: 17px;
+    rows: 8;
+    min-height: 180px;
+    line-height: 1.6;
+    border-radius: 10px;
+    padding: 16px;
+  }
+
+  /* Full-width stacked buttons */
   .buttons {
     flex-direction: column;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  /* Save button — prominent */
+  .save-button {
+    font-size: 17px;
+    padding: 16px;
+    border-radius: 10px;
+  }
+
+  /* Dropbox button — secondary size */
+  .dropbox-button {
+    font-size: 15px;
+    padding: 14px;
+    border-radius: 10px;
+    background: #0061ff;
+  }
+
+  /* Saved content: show but compact */
+  .saved-section {
+    margin-top: 20px;
+    padding-top: 16px;
+  }
+
+  .saved-content {
+    font-size: 14px;
+    max-height: 200px;
+  }
+
+  .saved-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .save-status-banner {
+    font-size: 16px;
+    padding: 14px;
+    border-radius: 10px;
   }
 }
+
