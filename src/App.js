@@ -384,9 +384,9 @@ function App() {
             <span className="tool-name">Path Links</span>
             <span className="tool-desc">Quick access to filesystem paths. Type a number or search by label to copy.</span>
           </a>
-          <a href="/parser" className="tool-link">
-            <span className="tool-name">Tracklist Parser</span>
-            <span className="tool-desc">Paste a YouTube tracklist and get formatted output for Google Sheets.</span>
+          <a href="/qr_bridge" className="tool-link">
+            <span className="tool-name">QR Bridge</span>
+            <span className="tool-desc">Generate QR codes from text or URLs. Scan to view content instantly.</span>
           </a>
         </div>
         <p className="tools-hint">Prompting is to divide the chat into subtopics.</p>

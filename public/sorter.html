@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Line Sorter</title>
+  <style>
+@import url("https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz:300,400");
+
+html, body {
+  -webkit-font-smoothing: antialiased;
+  background-color: #111;
+  color: #C8C7C8;
+  font: 20px/24px "Yanone Kaffeesatz", HelveticaNeue, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-weight: 300;
+  margin: 0;
+  padding: 10px 0;
+}
+
+* { box-sizing: border-box; }
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+h1 {
+  text-align: center;
+  color: #667eea;
+  font-size: 2rem;
+  margin: 20px 0 5px;
+  font-weight: 400;
+}
+
+.subtitle {
+  text-align: center;
+  color: #888;
+  font-size: 1rem;
+  margin-bottom: 20px;
+}
+
+.section {
+  background: linear-gradient(135deg, rgba(38, 50, 56, 0.8), rgba(55, 71, 79, 0.8));
+  border: 1px solid rgba(144, 164, 174, 0.3);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin: 1rem 0;
+}
+
+.section h3 {
+  color: #667eea;
+  font-weight: 400;
+  font-size: 1.3rem;
+  margin: 0 0 12px;
+}
+
+label {
+  color: #90A4AE;
+  font-size: 0.9rem;
+  display: block;
+  margin-bottom: 6px;
+}
+
+textarea {
+  width: 100%;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(144,164,174,0.4);
+  border-radius: 8px;
+  padding: 12px;
+  color: #E0E0E0;
+  font-family: monospace;
+  font-size: 0.85rem;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+}
+
+.btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+.btn {
+  background: linear-gradient(45deg, #455A64, #37474F);
+  color: #E0E0E0;
+  border: 1px solid rgba(144,164,174,0.4);
+  border-radius: 8px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  background: linear-gradient(45deg, #546E7A, #455A64);
+  border-color: #667eea;
+}
+
+.btn.primary {
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  border-color: transparent;
+  color: white;
+}
+
+.btn.primary:hover {
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn.green {
+  background: linear-gradient(45deg, #43A047, #2E7D32);
+  border-color: transparent;
+  color: white;
+}
+
+.btn.green:hover {
+  box-shadow: 0 4px 12px rgba(67, 160, 71, 0.4);
+}
+
+.status {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: #8BC34A;
+  margin-top: 8px;
+  min-height: 1.2em;
+}
+
+.status.error { color: #f44336; }
+
+.preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 0.85rem;
+}
+
+.preview-table th {
+  background: rgba(102, 126, 234, 0.2);
+  color: #667eea;
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+}
+
+.preview-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-family: monospace;
+}
+
+.preview-table tr:hover {
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.preview-table .col-name { color: #667eea; white-space: nowrap; }
+.preview-table .col-value { color: #CE93D8; }
+
+.format-info {
+  background: rgba(102, 126, 234, 0.08);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 10px 0;
+  font-size: 0.85rem;
+  color: #90A4AE;
+  line-height: 1.6;
+}
+
+.format-info code {
+  background: rgba(255,255,255,0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #FFC107;
+  font-size: 0.8rem;
+}
+
+/* Navbar */
+.music-navbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 50px;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 9999;
+  padding: 0 20px;
+  border-bottom: 3px solid #667eea;
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.5);
+}
+
+body { padding-top: 53px; }
+
+.music-nav-link {
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.music-nav-link:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  color: white;
+}
+
+.music-navbar .nav-title {
+  color: #CE93D8;
+  font-weight: 600;
+  font-size: 15px;
+  margin-right: auto;
+  white-space: nowrap;
+}
+  </style>
+</head>
+<body>
+<!-- Navbar -->
+<div class="music-navbar">
+  <span class="nav-title">Line Sorter</span>
+  <button class="music-nav-link" style="background:linear-gradient(45deg,#FF6B35,#F7931E);" onclick="window.open('index.html','_blank')">Main</button>
+</div>
+
+<div class="container">
+  <h1>Line Sorter</h1>
+  <p class="subtitle">Paste comma-separated lines — sort them alphabetically by name</p>
+
+  <!-- Step 1: Paste -->
+  <div class="section">
+    <h3>1. Paste Lines</h3>
+    <div class="format-info">
+      One entry per line in the format:<br>
+      <code>name, value</code><br>
+      Lines are sorted alphabetically by the name (the part before the first comma).
+    </div>
+    <textarea id="inputText" rows="12" placeholder="Paste your lines here...
+claude_study1, /Users/stanleytan/documents/notes/learning/AI_llms/youtube
+vercel_screenshots, /Users/stanleytan/documents/notes/vercel_screenshots
+new_line, test"></textarea>
+    <div class="btn-row">
+      <button class="btn primary" onclick="sortLines()">Sort</button>
+      <button class="btn" onclick="document.getElementById('inputText').value=''; clearOutput()">Clear</button>
+    </div>
+    <div class="status" id="parseStatus"></div>
+  </div>
+
+  <!-- Step 2: Preview -->
+  <div class="section" id="previewSection" style="display:none;">
+    <h3>2. Sorted Preview (<span id="lineCount">0</span> lines)</h3>
+    <div id="previewTable"></div>
+  </div>
+
+  <!-- Step 3: Output -->
+  <div class="section" id="outputSection" style="display:none;">
+    <h3>3. Copy Output</h3>
+    <label>Sorted lines — ready to copy:</label>
+    <textarea id="outputText" rows="10" readonly></textarea>
+    <div class="btn-row">
+      <button class="btn green" onclick="copyToClipboard('outputText', 'copyStatus')">Copy to Clipboard</button>
+      <span class="status" id="copyStatus"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+let sortedLines = [];
+
+function sortLines() {
+  const raw = document.getElementById('inputText').value.trim();
+  if (!raw) {
+    setStatus('parseStatus', 'Paste some lines first.', true);
+    return;
+  }
+
+  const lines = raw.split('\n').map(l => l.trim()).filter(l => l);
+
+  // Parse each line into {name, value, original}
+  sortedLines = lines.map(line => {
+    const commaIdx = line.indexOf(',');
+    if (commaIdx === -1) {
+      return { name: line.trim(), value: '', original: line };
+    }
+    return {
+      name: line.substring(0, commaIdx).trim(),
+      value: line.substring(commaIdx + 1).trim(),
+      original: line
+    };
+  });
+
+  // Sort alphabetically by name (case-insensitive)
+  sortedLines.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+
+  if (sortedLines.length === 0) {
+    setStatus('parseStatus', 'No lines found.', true);
+    clearOutput();
+    return;
+  }
+
+  setStatus('parseStatus', `Sorted ${sortedLines.length} lines.`);
+  showPreview();
+  showOutput();
+}
+
+function showPreview() {
+  const section = document.getElementById('previewSection');
+  section.style.display = '';
+  document.getElementById('lineCount').textContent = sortedLines.length;
+
+  let html = '<table class="preview-table"><tr><th>#</th><th>Name</th><th>Value</th></tr>';
+  sortedLines.forEach((entry, i) => {
+    html += `<tr>
+      <td style="color:#555">${i + 1}</td>
+      <td class="col-name">${escHtml(entry.name)}</td>
+      <td class="col-value">${escHtml(entry.value)}</td>
+    </tr>`;
+  });
+  html += '</table>';
+  document.getElementById('previewTable').innerHTML = html;
+}
+
+function showOutput() {
+  const section = document.getElementById('outputSection');
+  section.style.display = '';
+
+  const output = sortedLines.map(entry => {
+    if (entry.value) {
+      return `${entry.name}, ${entry.value}`;
+    }
+    return entry.name;
+  });
+  document.getElementById('outputText').value = output.join('\n');
+}
+
+function clearOutput() {
+  document.getElementById('previewSection').style.display = 'none';
+  document.getElementById('outputSection').style.display = 'none';
+  document.getElementById('parseStatus').textContent = '';
+  sortedLines = [];
+}
+
+function copyToClipboard(textareaId, statusId) {
+  const text = document.getElementById(textareaId).value;
+  navigator.clipboard.writeText(text).then(() => {
+    setStatus(statusId, 'Copied!');
+  }).catch(() => {
+    const el = document.getElementById(textareaId);
+    el.select();
+    document.execCommand('copy');
+    setStatus(statusId, 'Copied!');
+  });
+}
+
+function setStatus(id, msg, isError) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'status' + (isError ? ' error' : '');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>

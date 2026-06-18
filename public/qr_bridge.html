@@ -428,7 +428,7 @@
 
     <div id="urlMode" style="display:none;">
       <label>Enter a URL</label>
-      <input type="text" id="urlInput" placeholder="https://drive.google.com/...">
+      <input type="text" id="urlInput" placeholder="https://youtube.com/watch?v=... or any URL">
     </div>
 
     <div id="baseURLGroup">
@@ -515,10 +515,12 @@
       buttons[0].classList.add('active');
       document.getElementById('textMode').style.display = '';
       document.getElementById('urlMode').style.display = 'none';
+      document.getElementById('baseURLGroup').style.display = '';
     } else {
       buttons[1].classList.add('active');
       document.getElementById('textMode').style.display = 'none';
       document.getElementById('urlMode').style.display = '';
+      document.getElementById('baseURLGroup').style.display = 'none';
     }
   }
 
