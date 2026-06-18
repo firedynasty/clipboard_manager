@@ -368,9 +368,9 @@ function App() {
             <span className="tool-name">Clipboard Accumulator</span>
             <span className="tool-desc">Append clipboard snippets into a single scrollable collection you can copy or download.</span>
           </a>
-          <a href="/splitter" className="tool-link">
-            <span className="tool-name">Text Splitter</span>
-            <span className="tool-desc">Split markdown or structured text into individual sections and download each as a .txt file.</span>
+          <a href="/saved_text" className="tool-link">
+            <span className="tool-name">Saved Text</span>
+            <span className="tool-desc">Search and copy saved text notes from Dropbox by name or folder.</span>
           </a>
           <a href="/images" className="tool-link">
             <span className="tool-name">Clip Images</span>
@@ -388,6 +388,17 @@ function App() {
             <span className="tool-name">QR Bridge</span>
             <span className="tool-desc">Generate QR codes from text or URLs. Scan to view content instantly.</span>
           </a>
+          <div className="tool-dropdown">
+            <button className="tool-dropdown-toggle" onClick={(e) => {
+              e.currentTarget.parentElement.classList.toggle('open');
+            }}>More Tools ▾</button>
+            <div className="tool-dropdown-menu">
+              <a href="/splitter" className="tool-link">
+                <span className="tool-name">Text Splitter</span>
+                <span className="tool-desc">Split markdown or structured text into individual sections and download each as a .txt file.</span>
+              </a>
+            </div>
+          </div>
         </div>
         <p className="tools-hint">Prompting is to divide the chat into subtopics.</p>
 
