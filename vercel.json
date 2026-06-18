@@ -2,6 +2,8 @@
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/:path*" },
     { "source": "/qr", "destination": "/qr_bridge.html" },
+    { "source": "/qr_bridge", "destination": "/qr_bridge.html" },
+    { "source": "/sorter", "destination": "/sorter.html" },
     { "source": "/accumulator", "destination": "/clipboard_accumulator.html" },
     { "source": "/splitter", "destination": "/text_splitter.html" },
     { "source": "/images", "destination": "/clip_images.html" },
