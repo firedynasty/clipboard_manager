@@ -6,6 +6,8 @@
     { "source": "/splitter", "destination": "/text_splitter.html" },
     { "source": "/images", "destination": "/clip_images.html" },
     { "source": "/screenshots", "destination": "/screenshots.html" },
+    { "source": "/paths", "destination": "/paths.html" },
+    { "source": "/parser", "destination": "/parser.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

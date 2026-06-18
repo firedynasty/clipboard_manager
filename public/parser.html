@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tracklist Parser</title>
+  <style>
+@import url("https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz:300,400");
+
+html, body {
+  -webkit-font-smoothing: antialiased;
+  background-color: #111;
+  color: #C8C7C8;
+  font: 20px/24px "Yanone Kaffeesatz", HelveticaNeue, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-weight: 300;
+  margin: 0;
+  padding: 10px 0;
+}
+
+* { box-sizing: border-box; }
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+h1 {
+  text-align: center;
+  color: #667eea;
+  font-size: 2rem;
+  margin: 20px 0 5px;
+  font-weight: 400;
+}
+
+.subtitle {
+  text-align: center;
+  color: #888;
+  font-size: 1rem;
+  margin-bottom: 20px;
+}
+
+/* Sections */
+.section {
+  background: linear-gradient(135deg, rgba(38, 50, 56, 0.8), rgba(55, 71, 79, 0.8));
+  border: 1px solid rgba(144, 164, 174, 0.3);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin: 1rem 0;
+}
+
+.section h3 {
+  color: #667eea;
+  font-weight: 400;
+  font-size: 1.3rem;
+  margin: 0 0 12px;
+}
+
+label {
+  color: #90A4AE;
+  font-size: 0.9rem;
+  display: block;
+  margin-bottom: 6px;
+}
+
+textarea {
+  width: 100%;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(144,164,174,0.4);
+  border-radius: 8px;
+  padding: 12px;
+  color: #E0E0E0;
+  font-family: monospace;
+  font-size: 0.85rem;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+}
+
+input[type="text"] {
+  width: 100%;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(144,164,174,0.4);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #E0E0E0;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+.btn {
+  background: linear-gradient(45deg, #455A64, #37474F);
+  color: #E0E0E0;
+  border: 1px solid rgba(144,164,174,0.4);
+  border-radius: 8px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  background: linear-gradient(45deg, #546E7A, #455A64);
+  border-color: #667eea;
+}
+
+.btn.primary {
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  border-color: transparent;
+  color: white;
+}
+
+.btn.primary:hover {
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn.green {
+  background: linear-gradient(45deg, #43A047, #2E7D32);
+  border-color: transparent;
+  color: white;
+}
+
+.btn.green:hover {
+  box-shadow: 0 4px 12px rgba(67, 160, 71, 0.4);
+}
+
+.status {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: #8BC34A;
+  margin-top: 8px;
+  min-height: 1.2em;
+}
+
+.status.error { color: #f44336; }
+
+/* Preview table */
+.preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 0.85rem;
+}
+
+.preview-table th {
+  background: rgba(102, 126, 234, 0.2);
+  color: #667eea;
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+}
+
+.preview-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-family: monospace;
+}
+
+.preview-table tr:hover {
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.preview-table .col-time { color: #667eea; white-space: nowrap; }
+.preview-table .col-title { color: #E0E0E0; }
+.preview-table .col-artist { color: #CE93D8; }
+
+/* Format info */
+.format-info {
+  background: rgba(102, 126, 234, 0.08);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 10px 0;
+  font-size: 0.85rem;
+  color: #90A4AE;
+  line-height: 1.6;
+}
+
+.format-info code {
+  background: rgba(255,255,255,0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #FFC107;
+  font-size: 0.8rem;
+}
+
+/* Navbar */
+.music-navbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 50px;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 9999;
+  padding: 0 20px;
+  border-bottom: 3px solid #667eea;
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.5);
+}
+
+body { padding-top: 53px; }
+
+.music-nav-link {
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.music-nav-link:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  color: white;
+}
+
+.music-navbar .nav-title {
+  color: #CE93D8;
+  font-weight: 600;
+  font-size: 15px;
+  margin-right: auto;
+  white-space: nowrap;
+}
+  </style>
+</head>
+<body>
+<!-- Navbar -->
+<div class="music-navbar">
+  <span class="nav-title">Tracklist Parser</span>
+  <button class="music-nav-link" style="background:linear-gradient(45deg,#FF6B35,#F7931E);" onclick="window.open('index.html','_blank')">Main</button>
+  <button class="music-nav-link" style="background:linear-gradient(45deg,#667eea,#764ba2);" onclick="window.open('parser2.html','_blank')">Link Cleaner</button>
+  <button class="music-nav-link" style="background:linear-gradient(45deg,#6A1B9A,#4A148C);" onclick="window.open('classical_player.html','_blank')">Classical Player</button>
+  <button class="music-nav-link" style="background:linear-gradient(45deg,#1B5E20,#0A3D15);" onclick="window.open('musicindex.html','_blank')">Music Index</button>
+</div>
+
+<div class="container">
+  <h1>Tracklist Parser</h1>
+  <p class="subtitle">Paste a YouTube tracklist — get a single cell for your Google Sheet</p>
+
+  <!-- Step 1: Paste -->
+  <div class="section">
+    <h3>1. Paste YouTube Tracklist</h3>
+    <div class="format-info">
+      Accepts formats like:<br>
+      <code>00:00:00 – Composer – Piece Title</code><br>
+      <code>00:00:00, – Composer – Piece Title</code><br>
+      <code>00:00:00 Composer - Piece Title</code><br>
+      Timestamps can be <code>HH:MM:SS</code> or <code>MM:SS</code>. Dashes, en-dashes, em-dashes all work.
+    </div>
+    <textarea id="inputText" rows="12" placeholder="Paste your tracklist here...
+00:00:00 – Sergei Rachmaninoff – Piano Concerto No. 3, Op. 30: II. Intermezzo
+00:10:56 – Sergei Rachmaninoff – 14 Romances, Op. 34: No. 14, Vocalise
+..."></textarea>
+    <div class="btn-row">
+      <button class="btn primary" onclick="parseTracklist()">Parse</button>
+      <button class="btn" onclick="document.getElementById('inputText').value=''; clearOutput()">Clear</button>
+    </div>
+    <div class="status" id="parseStatus"></div>
+  </div>
+
+  <!-- Step 2: Preview -->
+  <div class="section" id="previewSection" style="display:none;">
+    <h3>2. Preview (<span id="trackCount">0</span> tracks)</h3>
+    <div id="previewTable"></div>
+  </div>
+
+  <!-- Step 3: Output -->
+  <div class="section" id="outputSection" style="display:none;">
+    <h3>3. Copy Output</h3>
+
+    <label>Single cell output — paste into one Google Sheets cell (compatible with Classical Player CSV loader):</label>
+    <textarea id="outputCell" rows="10" readonly></textarea>
+    <div class="btn-row">
+      <button class="btn green" onclick="copyToClipboard('outputCell', 'cellCopyStatus')">Copy to Clipboard</button>
+      <span class="status" id="cellCopyStatus"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+let parsedTracks = [];
+
+function parseTracklist() {
+  const raw = document.getElementById('inputText').value.trim();
+  if (!raw) {
+    setStatus('parseStatus', 'Paste a tracklist first.', true);
+    return;
+  }
+
+  const lines = raw.split('\n').map(l => l.trim()).filter(l => l);
+  parsedTracks = [];
+
+  for (const line of lines) {
+    // Match timestamp at start: HH:MM:SS or MM:SS
+    const tsMatch = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?)/);
+    if (!tsMatch) continue;
+
+    const timestamp = tsMatch[1];
+    // Everything after the timestamp
+    let rest = line.slice(tsMatch[0].length).trim();
+
+    // Strip ALL commas from the track text — they become double spaces
+    // so the only comma in the final line is the one after the timestamp
+    rest = rest.replace(/,/g, ' ');
+
+    // Strip leading dash variants and whitespace
+    rest = rest.replace(/^\s*/, '');
+    rest = rest.replace(/^[\u2013\u2014\-]+\s*/, ''); // en-dash, em-dash, hyphen
+
+    // Try to split "Composer – Title" or "Composer - Title"
+    // Use the FIRST dash/en-dash/em-dash that has spaces around it as the separator
+    let composer = '';
+    let title = rest;
+
+    const dashSplit = rest.match(/^(.+?)\s+[\u2013\u2014\-]{1,2}\s+(.+)$/);
+    if (dashSplit) {
+      composer = dashSplit[1].trim();
+      title = dashSplit[2].trim();
+    }
+
+    // Collapse multiple spaces caused by comma removal
+    composer = composer.replace(/\s+/g, ' ').trim();
+    title = title.replace(/\s+/g, ' ').trim();
+
+    parsedTracks.push({ timestamp, title, composer });
+  }
+
+  if (parsedTracks.length === 0) {
+    setStatus('parseStatus', 'No tracks found. Check the format.', true);
+    clearOutput();
+    return;
+  }
+
+  setStatus('parseStatus', `Parsed ${parsedTracks.length} tracks.`);
+  showPreview();
+  showOutput();
+}
+
+function showPreview() {
+  const section = document.getElementById('previewSection');
+  section.style.display = '';
+  document.getElementById('trackCount').textContent = parsedTracks.length;
+
+  let html = '<table class="preview-table"><tr><th>#</th><th>Time</th><th>Title</th><th>Composer</th></tr>';
+  parsedTracks.forEach((t, i) => {
+    html += `<tr>
+      <td style="color:#555">${i + 1}</td>
+      <td class="col-time">${t.timestamp}</td>
+      <td class="col-title">${escHtml(t.title)}</td>
+      <td class="col-artist">${escHtml(t.composer)}</td>
+    </tr>`;
+  });
+  html += '</table>';
+  document.getElementById('previewTable').innerHTML = html;
+}
+
+function showOutput() {
+  const section = document.getElementById('outputSection');
+  section.style.display = '';
+
+  // Single line with literal \n between entries — paste into one cell
+  const cellLines = parsedTracks.map(t => {
+    const combined = t.composer ? `${t.composer} – ${t.title}` : t.title;
+    return `${t.timestamp},${combined}`;
+  });
+  document.getElementById('outputCell').value = cellLines.join('\\n');
+}
+
+function clearOutput() {
+  document.getElementById('previewSection').style.display = 'none';
+  document.getElementById('outputSection').style.display = 'none';
+  document.getElementById('parseStatus').textContent = '';
+  parsedTracks = [];
+}
+
+function copyToClipboard(textareaId, statusId) {
+  const text = document.getElementById(textareaId).value;
+  navigator.clipboard.writeText(text).then(() => {
+    setStatus(statusId, 'Copied!');
+  }).catch(() => {
+    // Fallback
+    const el = document.getElementById(textareaId);
+    el.select();
+    document.execCommand('copy');
+    setStatus(statusId, 'Copied!');
+  });
+}
+
+function setStatus(id, msg, isError) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'status' + (isError ? ' error' : '');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+
+</script>
+</body>
+</html>

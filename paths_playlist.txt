@@ -1,0 +1,4 @@
+# Paths playlist - one per line: label, /path/to/directory
+# Lines starting with # are comments
+claude_study1, /Users/stanleytan/documents/notes/learning/AI_llms/youtube
+vercel_screenshots, /Users/stanleytan/documents/notes/vercel_screenshots

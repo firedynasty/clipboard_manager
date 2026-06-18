@@ -380,6 +380,14 @@ function App() {
             <span className="tool-name">Screenshots</span>
             <span className="tool-desc">Search Dropbox screenshots by name. Click to view in modal with left/right navigation.</span>
           </a>
+          <a href="/paths" className="tool-link">
+            <span className="tool-name">Path Links</span>
+            <span className="tool-desc">Quick access to filesystem paths. Type a number or search by label to copy.</span>
+          </a>
+          <a href="/parser" className="tool-link">
+            <span className="tool-name">Tracklist Parser</span>
+            <span className="tool-desc">Paste a YouTube tracklist and get formatted output for Google Sheets.</span>
+          </a>
         </div>
         <p className="tools-hint">Prompting is to divide the chat into subtopics.</p>
 

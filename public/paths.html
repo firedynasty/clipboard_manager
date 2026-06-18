@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Path Links</title>
+  <style>
+@import url("https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz:300,400");
+
+html, body {
+  -webkit-font-smoothing: antialiased;
+  background-color: #111;
+  color: #C8C7C8;
+  font: 20px/24px "Yanone Kaffeesatz", HelveticaNeue, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-weight: 300;
+  margin: 0;
+  padding: 10px 0;
+}
+
+* { box-sizing: border-box; }
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+h1 {
+  text-align: center;
+  color: #667eea;
+  font-size: 2rem;
+  margin: 20px 0 5px;
+  font-weight: 400;
+}
+
+.subtitle {
+  text-align: center;
+  color: #888;
+  font-size: 1rem;
+  margin-bottom: 20px;
+}
+
+.section {
+  background: linear-gradient(135deg, rgba(38, 50, 56, 0.8), rgba(55, 71, 79, 0.8));
+  border: 1px solid rgba(144, 164, 174, 0.3);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin: 1rem 0;
+}
+
+.section h3 {
+  color: #667eea;
+  font-weight: 400;
+  font-size: 1.3rem;
+  margin: 0 0 12px;
+}
+
+input[type="text"] {
+  width: 100%;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(144,164,174,0.4);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #E0E0E0;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+}
+
+.btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+.btn {
+  background: linear-gradient(45deg, #455A64, #37474F);
+  color: #E0E0E0;
+  border: 1px solid rgba(144,164,174,0.4);
+  border-radius: 8px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  background: linear-gradient(45deg, #546E7A, #455A64);
+  border-color: #667eea;
+}
+
+.btn.primary {
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  border-color: transparent;
+  color: white;
+}
+
+.btn.primary:hover {
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn.green {
+  background: linear-gradient(45deg, #43A047, #2E7D32);
+  border-color: transparent;
+  color: white;
+}
+
+.btn.green:hover {
+  box-shadow: 0 4px 12px rgba(67, 160, 71, 0.4);
+}
+
+.btn.active {
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  border-color: transparent;
+  color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.status {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: #8BC34A;
+  margin-top: 8px;
+  min-height: 1.2em;
+}
+
+.status.error { color: #f44336; }
+
+/* Paths list */
+.paths-list {
+  margin-top: 10px;
+}
+
+.path-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.path-item:hover {
+  background: rgba(102, 126, 234, 0.15);
+}
+
+.path-item.copied {
+  background: rgba(139, 195, 74, 0.15);
+}
+
+.path-number {
+  color: #667eea;
+  font-weight: 400;
+  font-size: 1.1rem;
+  min-width: 30px;
+  text-align: right;
+}
+
+.path-label {
+  color: #CE93D8;
+  font-weight: 400;
+  font-size: 1rem;
+  min-width: 140px;
+}
+
+.path-value {
+  color: #E0E0E0;
+  font-family: monospace;
+  font-size: 0.8rem;
+  word-break: break-all;
+  flex: 1;
+}
+
+.path-copied-badge {
+  color: #8BC34A;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.count-info {
+  color: #90A4AE;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
+/* Navbar */
+.music-navbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 50px;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 9999;
+  padding: 0 20px;
+  border-bottom: 3px solid #667eea;
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.5);
+}
+
+body { padding-top: 53px; }
+
+.music-nav-link {
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.music-nav-link:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  color: white;
+}
+
+.music-navbar .nav-title {
+  color: #CE93D8;
+  font-weight: 600;
+  font-size: 15px;
+  margin-right: auto;
+  white-space: nowrap;
+}
+  </style>
+</head>
+<body>
+<!-- Navbar -->
+<div class="music-navbar">
+  <span class="nav-title">Path Links</span>
+  <button class="music-nav-link" style="background:linear-gradient(45deg,#FF6B35,#F7931E);" onclick="window.location.href='/'">Main</button>
+  <button class="music-nav-link" style="background:linear-gradient(45deg,#667eea,#764ba2);" onclick="window.location.href='/screenshots'">Screenshots</button>
+  <button class="music-nav-link" style="background:linear-gradient(45deg,#6A1B9A,#4A148C);" onclick="window.location.href='/images'">Images</button>
+  <button class="music-nav-link" style="background:linear-gradient(45deg,#43A047,#2E7D32);" onclick="window.location.href='/parser'">Parser</button>
+</div>
+
+<div class="container">
+  <h1>Path Links</h1>
+  <p class="subtitle">Quick access to filesystem paths — type a number or search by label</p>
+
+  <!-- Search/Jump -->
+  <div class="section">
+    <h3>Quick Jump</h3>
+    <input type="text" id="searchInput" placeholder="Type a number (e.g. 1) or search by label..." autofocus>
+    <div class="btn-row">
+      <button class="btn" id="sortAlphaBtn" onclick="toggleSort('alpha')">Sort A-Z</button>
+      <button class="btn" id="sortNumBtn" onclick="toggleSort('original')">Sort Original</button>
+    </div>
+    <div class="status" id="searchStatus"></div>
+  </div>
+
+  <!-- Paths list -->
+  <div class="section">
+    <h3>Paths</h3>
+    <div class="count-info" id="countInfo"></div>
+    <div class="paths-list" id="pathsList"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const searchInput = document.getElementById('searchInput');
+  const searchStatus = document.getElementById('searchStatus');
+  const pathsList = document.getElementById('pathsList');
+  const countInfo = document.getElementById('countInfo');
+  const sortAlphaBtn = document.getElementById('sortAlphaBtn');
+  const sortNumBtn = document.getElementById('sortNumBtn');
+
+  let allPaths = [];
+  let currentSort = 'alpha'; // default sorted alphabetically (matches generate script)
+  let copiedIndex = -1;
+
+  async function loadPaths() {
+    searchStatus.textContent = 'Loading paths...';
+    try {
+      const res = await fetch('/api/paths');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      allPaths = await res.json();
+      searchStatus.textContent = '';
+      updateSortButtons();
+      renderPaths(allPaths);
+    } catch (err) {
+      searchStatus.textContent = 'Error: ' + err.message;
+      searchStatus.className = 'status error';
+    }
+  }
+
+  function getSorted() {
+    if (currentSort === 'alpha') {
+      return [...allPaths].sort(function(a, b) {
+        return a.label.toLowerCase().localeCompare(b.label.toLowerCase());
+      });
+    }
+    return [...allPaths];
+  }
+
+  function toggleSort(mode) {
+    currentSort = mode;
+    updateSortButtons();
+    handleSearch();
+  }
+
+  function updateSortButtons() {
+    sortAlphaBtn.className = 'btn' + (currentSort === 'alpha' ? ' active' : '');
+    sortNumBtn.className = 'btn' + (currentSort === 'original' ? ' active' : '');
+  }
+
+  function renderPaths(paths) {
+    pathsList.innerHTML = '';
+    countInfo.textContent = paths.length + ' path(s)' + (paths.length !== allPaths.length ? ' (filtered from ' + allPaths.length + ')' : '');
+
+    paths.forEach(function(p, idx) {
+      var num = idx + 1;
+      var item = document.createElement('div');
+      item.className = 'path-item';
+      item.innerHTML =
+        '<span class="path-number">' + num + '.</span>' +
+        '<span class="path-label">' + escHtml(p.label) + '</span>' +
+        '<span class="path-value">' + escHtml(p.path) + '</span>' +
+        '<span class="path-copied-badge" id="badge-' + idx + '"></span>';
+      item.addEventListener('click', function() { copyPath(p.path, idx); });
+      pathsList.appendChild(item);
+    });
+  }
+
+  function copyPath(path, idx) {
+    navigator.clipboard.writeText(path).then(function() {
+      // Clear previous badge
+      if (copiedIndex >= 0) {
+        var oldBadge = document.getElementById('badge-' + copiedIndex);
+        if (oldBadge) { oldBadge.textContent = ''; }
+        var oldItem = pathsList.children[copiedIndex];
+        if (oldItem) oldItem.classList.remove('copied');
+      }
+      // Show new badge
+      var badge = document.getElementById('badge-' + idx);
+      if (badge) badge.textContent = 'Copied!';
+      var item = pathsList.children[idx];
+      if (item) item.classList.add('copied');
+      copiedIndex = idx;
+
+      searchStatus.textContent = 'Copied: ' + path;
+      searchStatus.className = 'status';
+    }).catch(function() {
+      searchStatus.textContent = 'Failed to copy';
+      searchStatus.className = 'status error';
+    });
+  }
+
+  function handleSearch() {
+    var q = searchInput.value.trim();
+    var sorted = getSorted();
+
+    // If it's a number, jump to that path
+    if (/^\d+$/.test(q)) {
+      var num = parseInt(q, 10);
+      if (num >= 1 && num <= sorted.length) {
+        renderPaths(sorted);
+        copyPath(sorted[num - 1].path, num - 1);
+        return;
+      }
+    }
+
+    // Filter by label
+    if (q) {
+      var filtered = sorted.filter(function(p) {
+        return p.label.toLowerCase().includes(q.toLowerCase()) ||
+               p.path.toLowerCase().includes(q.toLowerCase());
+      });
+      renderPaths(filtered);
+    } else {
+      renderPaths(sorted);
+    }
+  }
+
+  searchInput.addEventListener('input', handleSearch);
+  searchInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  });
+
+  // Init
+  loadPaths();
+})();
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
