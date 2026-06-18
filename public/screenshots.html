@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Screenshots</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=Source+Serif+4:opsz,wght@8..60,300..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f0e6;
+    --paper-deep: #ebe4d4;
+    --ink: #1a1714;
+    --ink-soft: #4a4540;
+    --ink-faint: #8a847d;
+    --rule: #c9c0ad;
+    --accent: #8b2e2e;
+    --accent-soft: #b85c5c;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 16px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  body {
+    background-image:
+      radial-gradient(ellipse at top, rgba(255,255,255,0.4), transparent 60%),
+      radial-gradient(ellipse at bottom right, rgba(139,46,46,0.04), transparent 70%);
+  }
+
+  .app {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  header.masthead {
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .masthead-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 900;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .masthead-title em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--accent);
+  }
+
+  .masthead-meta {
+    font-family: 'Fraunces', serif;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--ink-soft);
+    border-left: 1px solid var(--rule);
+    padding-left: 1rem;
+  }
+
+  .masthead-meta span { display: block; }
+  .masthead-meta span:first-child { font-weight: 600; color: var(--ink); }
+
+  .search-bar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .search-bar input {
+    flex: 1;
+    padding: 0.7rem 1rem;
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 1rem;
+    border: 1px solid var(--ink);
+    border-radius: 2px;
+    background: rgba(255, 253, 248, 0.8);
+    color: var(--ink);
+    outline: none;
+  }
+
+  .search-bar input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(139, 46, 46, 0.15);
+  }
+
+  .search-bar input::placeholder {
+    color: var(--ink-faint);
+    font-style: italic;
+  }
+
+  .status-line {
+    font-size: 0.85rem;
+    color: var(--ink-faint);
+    margin-bottom: 1rem;
+    font-style: italic;
+  }
+
+  .results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  .result-card {
+    background: rgba(255, 253, 248, 0.6);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .result-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(139, 46, 46, 0.12);
+  }
+
+  .result-card img {
+    width: 100%;
+    display: block;
+    object-fit: contain;
+    max-height: 400px;
+    background: var(--paper-deep);
+  }
+
+  .result-card .card-info {
+    padding: 0.5rem 0.75rem;
+    border-top: 1px solid var(--rule);
+    background: var(--paper-deep);
+  }
+
+  .result-card .card-name {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--ink);
+  }
+
+  .result-card .card-path {
+    font-size: 0.7rem;
+    color: var(--ink-faint);
+  }
+
+  /* Modal overlay */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(26, 23, 20, 0.92);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.active {
+    display: flex;
+  }
+
+  .modal-overlay img {
+    max-width: 85vw;
+    max-height: 80vh;
+    object-fit: contain;
+    border-radius: 4px;
+  }
+
+  .modal-content {
+    text-align: center;
+  }
+
+  .modal-name {
+    color: var(--paper);
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1rem;
+    margin-top: 0.75rem;
+  }
+
+  .modal-path {
+    color: var(--ink-faint);
+    font-size: 0.8rem;
+    margin-top: 0.2rem;
+  }
+
+  .modal-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.12);
+    border: none;
+    color: var(--paper);
+    font-size: 1.8rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.15s;
+  }
+
+  .modal-nav:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+
+  .modal-nav.left { left: 16px; }
+  .modal-nav.right { right: 16px; }
+
+  .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(255, 255, 255, 0.12);
+    border: none;
+    color: var(--paper);
+    font-size: 1.4rem;
+    padding: 0.5rem 0.85rem;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.15s;
+  }
+
+  .modal-close:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+
+  .help {
+    margin-top: 1.5rem;
+    padding: 1rem 1.25rem;
+    background: rgba(139, 46, 46, 0.04);
+    border-left: 3px solid var(--accent);
+    border-radius: 2px;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+
+  .help strong {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    color: var(--ink);
+    display: block;
+    margin-bottom: 0.3rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+  }
+
+  @media (max-width: 600px) {
+    .results-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header class="masthead">
+      <div>
+        <h1 class="masthead-title">Screen<em>shots</em></h1>
+      </div>
+      <div class="masthead-meta">
+        <span>Dropbox Images</span>
+        <span>Search &middot; Browse &middot; View</span>
+      </div>
+    </header>
+
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="Search by name (e.g. claude1)..." autofocus>
+    </div>
+
+    <div class="status-line" id="statusLine">Loading screenshots...</div>
+
+    <div class="results-grid" id="resultsGrid"></div>
+
+    <div class="modal-overlay" id="modalOverlay">
+      <button class="modal-nav left" id="modalPrev">&larr;</button>
+      <div class="modal-content" id="modalContent">
+        <img id="modalImg" src="" alt="">
+        <div class="modal-name" id="modalName"></div>
+        <div class="modal-path" id="modalPath"></div>
+      </div>
+      <button class="modal-nav right" id="modalNext">&rarr;</button>
+      <button class="modal-close" id="modalClose">&times;</button>
+    </div>
+
+    <div class="help">
+      <strong>How it works</strong>
+      Type a filename to search. Images with matching names across all folders are shown. Click to open full-screen, then use arrow keys or buttons to navigate. Press Escape to close.
+    </div>
+  </div>
+
+<script>
+(function() {
+  const searchInput = document.getElementById('searchInput');
+  const statusLine = document.getElementById('statusLine');
+  const resultsGrid = document.getElementById('resultsGrid');
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalImg = document.getElementById('modalImg');
+  const modalName = document.getElementById('modalName');
+  const modalPath = document.getElementById('modalPath');
+  const modalPrev = document.getElementById('modalPrev');
+  const modalNext = document.getElementById('modalNext');
+  const modalClose = document.getElementById('modalClose');
+
+  let allScreenshots = [];
+  let filtered = [];
+  let modalIndex = -1;
+
+  // Load screenshots JSON from API
+  async function loadScreenshots() {
+    try {
+      const res = await fetch('/api/screenshots');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      allScreenshots = await res.json();
+      statusLine.textContent = allScreenshots.length + ' screenshot(s) loaded. Type a name to search.';
+    } catch (err) {
+      statusLine.textContent = 'Error loading screenshots: ' + err.message;
+    }
+  }
+
+  function filterAndRender() {
+    const q = searchInput.value.trim().toLowerCase();
+    resultsGrid.innerHTML = '';
+
+    if (!q) {
+      filtered = [];
+      if (allScreenshots.length) {
+        statusLine.textContent = allScreenshots.length + ' screenshot(s) loaded. Type a name to search.';
+      }
+      return;
+    }
+
+    filtered = allScreenshots.filter(function(img) {
+      return img.name.toLowerCase().includes(q) ||
+             img.folder.toLowerCase().includes(q) ||
+             img.path.toLowerCase().includes(q);
+    });
+
+    statusLine.textContent = filtered.length + ' result(s) for \u201c' + searchInput.value.trim() + '\u201d';
+
+    filtered.forEach(function(img, idx) {
+      const card = document.createElement('div');
+      card.className = 'result-card';
+      card.innerHTML =
+        '<img src="' + img.url + '" alt="' + img.name + '" loading="lazy">' +
+        '<div class="card-info">' +
+          '<div class="card-name">' + img.name + '</div>' +
+          '<div class="card-path">' + img.folder + '/' + img.file + '</div>' +
+        '</div>';
+      card.addEventListener('click', function() { openModal(idx); });
+      resultsGrid.appendChild(card);
+    });
+  }
+
+  // Modal
+  function openModal(idx) {
+    if (!filtered.length) return;
+    modalIndex = idx;
+    updateModal();
+    modalOverlay.classList.add('active');
+  }
+
+  function closeModal() {
+    modalOverlay.classList.remove('active');
+    modalIndex = -1;
+    modalImg.src = '';
+  }
+
+  function updateModal() {
+    if (modalIndex < 0 || modalIndex >= filtered.length) return;
+    const img = filtered[modalIndex];
+    modalImg.src = img.url;
+    modalImg.alt = img.name;
+    modalName.textContent = img.name;
+    var counter = filtered.length > 1 ? ' \u2014 ' + (modalIndex + 1) + ' / ' + filtered.length : '';
+    modalPath.textContent = img.folder + '/' + img.file + counter;
+
+    // Show/hide nav arrows
+    var showNav = filtered.length > 1;
+    modalPrev.style.display = showNav ? '' : 'none';
+    modalNext.style.display = showNav ? '' : 'none';
+  }
+
+  function modalGo(delta) {
+    if (!filtered.length) return;
+    modalIndex = (modalIndex + delta + filtered.length) % filtered.length;
+    updateModal();
+  }
+
+  // Events
+  searchInput.addEventListener('input', filterAndRender);
+
+  modalClose.addEventListener('click', closeModal);
+  modalOverlay.addEventListener('click', function(e) {
+    if (e.target === modalOverlay) closeModal();
+  });
+  modalPrev.addEventListener('click', function(e) { e.stopPropagation(); modalGo(-1); });
+  modalNext.addEventListener('click', function(e) { e.stopPropagation(); modalGo(1); });
+
+  document.addEventListener('keydown', function(e) {
+    if (modalIndex < 0) return;
+    if (e.key === 'Escape') closeModal();
+    else if (e.key === 'ArrowLeft') modalGo(-1);
+    else if (e.key === 'ArrowRight') modalGo(1);
+  });
+
+  // Init
+  loadScreenshots();
+})();
+</script>
+</body>
+</html>

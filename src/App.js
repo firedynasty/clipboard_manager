@@ -376,6 +376,10 @@ function App() {
             <span className="tool-name">Clip Images</span>
             <span className="tool-desc">Upload images from your phone and view them on your laptop. 5 replaceable slots.</span>
           </a>
+          <a href="/screenshots" className="tool-link">
+            <span className="tool-name">Screenshots</span>
+            <span className="tool-desc">Search Dropbox screenshots by name. Click to view in modal with left/right navigation.</span>
+          </a>
         </div>
         <p className="tools-hint">Prompting is to divide the chat into subtopics.</p>
 

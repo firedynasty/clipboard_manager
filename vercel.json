@@ -5,6 +5,7 @@
     { "source": "/accumulator", "destination": "/clipboard_accumulator.html" },
     { "source": "/splitter", "destination": "/text_splitter.html" },
     { "source": "/images", "destination": "/clip_images.html" },
+    { "source": "/screenshots", "destination": "/screenshots.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
