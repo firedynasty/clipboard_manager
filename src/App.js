@@ -34,7 +34,16 @@ function App() {
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.tool-dropdown')) {
+        document.querySelectorAll('.tool-dropdown.open').forEach(el => el.classList.remove('open'));
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      document.removeEventListener('click', handleClickOutside);
+    };
   }, []);
 
   const parseShortcuts = (text) => {
