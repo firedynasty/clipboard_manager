@@ -319,20 +319,35 @@ body { padding-top: 53px; }
     sortNumBtn.className = 'btn' + (currentSort === 'original' ? ' active' : '');
   }
 
+  function isUrl(str) {
+    return /^https?:\/\//i.test(str);
+  }
+
   function renderPaths(paths) {
     pathsList.innerHTML = '';
     countInfo.textContent = paths.length + ' path(s)' + (paths.length !== allPaths.length ? ' (filtered from ' + allPaths.length + ')' : '');
 
     paths.forEach(function(p, idx) {
       var num = idx + 1;
+      var isLink = isUrl(p.path);
       var item = document.createElement('div');
-      item.className = 'path-item';
+      item.className = 'path-item' + (isLink ? ' path-link' : '');
       item.innerHTML =
         '<span class="path-number">' + num + '.</span>' +
         '<span class="path-label">' + escHtml(p.label) + '</span>' +
-        '<span class="path-value">' + escHtml(p.path) + '</span>' +
+        '<span class="path-value">' + (isLink
+          ? '<a href="' + escHtml(p.path) + '" target="_blank" rel="noopener" style="color:#64B5F6;text-decoration:none;">' + escHtml(p.path) + ' ↗</a>'
+          : escHtml(p.path)) + '</span>' +
         '<span class="path-copied-badge" id="badge-' + idx + '"></span>';
-      item.addEventListener('click', function() { copyPath(p.path, idx); });
+      item.addEventListener('click', function(e) {
+        if (isLink) {
+          if (!e.target.closest('a')) {
+            window.open(p.path, '_blank', 'noopener');
+          }
+        } else {
+          copyPath(p.path, idx);
+        }
+      });
       pathsList.appendChild(item);
     });
   }
