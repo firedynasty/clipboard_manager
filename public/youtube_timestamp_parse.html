@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>YouTube Timestamp Parser</title>
+  <style>
+@import url("https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz:300,400");
+
+html, body {
+  -webkit-font-smoothing: antialiased;
+  background-color: #111;
+  color: #C8C7C8;
+  font: 20px/24px "Yanone Kaffeesatz", HelveticaNeue, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-weight: 300;
+  margin: 0;
+  padding: 10px 0;
+}
+
+* { box-sizing: border-box; }
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+h1 {
+  text-align: center;
+  color: #667eea;
+  font-size: 2rem;
+  margin: 20px 0 5px;
+  font-weight: 400;
+}
+
+.subtitle {
+  text-align: center;
+  color: #888;
+  font-size: 1rem;
+  margin-bottom: 20px;
+}
+
+.section {
+  background: linear-gradient(135deg, rgba(38, 50, 56, 0.8), rgba(55, 71, 79, 0.8));
+  border: 1px solid rgba(144, 164, 174, 0.3);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin: 1rem 0;
+}
+
+.section h3 {
+  color: #667eea;
+  font-weight: 400;
+  font-size: 1.3rem;
+  margin: 0 0 12px;
+}
+
+label {
+  color: #90A4AE;
+  font-size: 0.9rem;
+  display: block;
+  margin-bottom: 6px;
+}
+
+input[type="text"] {
+  width: 100%;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(144,164,174,0.4);
+  border-radius: 8px;
+  padding: 12px;
+  color: #E0E0E0;
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.result-box {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+  display: none;
+}
+
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(144,164,174,0.15);
+}
+
+.result-row:last-child {
+  border-bottom: none;
+}
+
+.result-label {
+  color: #90A4AE;
+  font-size: 0.95rem;
+}
+
+.result-value {
+  color: #E0E0E0;
+  font-size: 1.2rem;
+  font-family: monospace;
+  padding: 4px 12px;
+  border-radius: 6px;
+}
+
+.result-value.highlight {
+  color: #667eea;
+  font-size: 1.6rem;
+  font-weight: 400;
+}
+
+.copy-btn {
+  background: rgba(102, 126, 234, 0.2);
+  border: 1px solid rgba(102, 126, 234, 0.4);
+  color: #667eea;
+  padding: 4px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  transition: background 0.2s;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.copy-btn:hover {
+  background: rgba(102, 126, 234, 0.4);
+}
+
+.result-right {
+  display: flex;
+  align-items: center;
+}
+
+.copied-toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #667eea;
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.copied-toast.show {
+  opacity: 1;
+}
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>YouTube Timestamp Parser</h1>
+    <p class="subtitle">Paste a YouTube URL with a timestamp to extract seconds</p>
+
+    <div class="section">
+      <h3>Input</h3>
+      <label>YouTube URL or timestamp</label>
+      <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=...&t=1:04:00 or 1:04:00 or &t=4106s" autofocus>
+    </div>
+
+    <div class="section result-box" id="resultBox">
+      <h3>Parsed Timestamp</h3>
+      <div class="result-row">
+        <span class="result-label">Seconds</span>
+        <div class="result-right">
+          <span class="result-value highlight" id="resultSeconds"></span>
+          <button class="copy-btn" onclick="copyText(document.getElementById('resultSeconds').textContent)">Copy</button>
+        </div>
+      </div>
+      <div class="result-row">
+        <span class="result-label">Formatted</span>
+        <div class="result-right">
+          <span class="result-value" id="resultFormatted"></span>
+          <button class="copy-btn" onclick="copyText(document.getElementById('resultFormatted').textContent)">Copy</button>
+        </div>
+      </div>
+      <div class="result-row" id="urlRow" style="display:none">
+        <span class="result-label">URL</span>
+        <div class="result-right">
+          <a id="urlLink" href="#" target="_blank" style="color:#667eea;font-family:monospace;font-size:0.85rem;word-break:break-all;text-decoration:none"></a>
+          <button class="copy-btn" onclick="copyText(document.getElementById('urlLink').href)">Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="copied-toast" id="toast">Copied!</div>
+
+  <script>
+const input = document.getElementById('urlInput');
+const resultBox = document.getElementById('resultBox');
+const resultSeconds = document.getElementById('resultSeconds');
+const resultFormatted = document.getElementById('resultFormatted');
+const urlRow = document.getElementById('urlRow');
+const urlLink = document.getElementById('urlLink');
+
+input.addEventListener('input', () => {
+  const val = input.value.trim();
+  if (!val) {
+    resultBox.style.display = 'none';
+    return;
+  }
+
+  const seconds = parseTimestamp(val);
+  if (seconds !== null) {
+    resultBox.style.display = 'block';
+    resultSeconds.textContent = seconds + 's';
+    resultFormatted.textContent = formatTime(seconds);
+
+    const videoId = extractVideoId(val);
+    if (videoId) {
+      const url = 'https://www.youtube.com/watch?v=' + videoId + '&t=' + seconds + 's';
+      urlLink.href = url;
+      urlLink.textContent = url;
+      urlRow.style.display = 'flex';
+    } else {
+      urlRow.style.display = 'none';
+    }
+  } else {
+    resultBox.style.display = 'none';
+  }
+});
+
+function parseTimestamp(input) {
+  // Try to extract t= parameter (supports t=4106s, t=4106, t=1:04:00, t=4:00)
+  const tParam = input.match(/[?&]t=([^&\s]+)/);
+  if (tParam) {
+    return parseTimeValue(tParam[1]);
+  }
+
+  // Try to find a bare timestamp in the input (HH:MM:SS or MM:SS)
+  const timeMatch = input.match(/(\d{1,2}:\d{2}:\d{2}|\d{1,2}:\d{2})/);
+  if (timeMatch) {
+    return parseTimeValue(timeMatch[1]);
+  }
+
+  // Try plain number (seconds)
+  const numMatch = input.match(/^(\d+)s?$/);
+  if (numMatch) {
+    return parseInt(numMatch[1], 10);
+  }
+
+  return null;
+}
+
+function parseTimeValue(val) {
+  // Remove trailing 's' if present (e.g. 4106s)
+  val = val.replace(/s$/, '');
+
+  // Check if it's a colon-separated time
+  if (val.includes(':')) {
+    const parts = val.split(':').map(Number);
+    if (parts.some(isNaN)) return null;
+
+    if (parts.length === 3) {
+      // HH:MM:SS
+      return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    } else if (parts.length === 2) {
+      // MM:SS
+      return parts[0] * 60 + parts[1];
+    }
+    return null;
+  }
+
+  // Plain number
+  const num = parseInt(val, 10);
+  return isNaN(num) ? null : num;
+}
+
+function formatTime(totalSeconds) {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+
+  const pad = n => String(n).padStart(2, '0');
+
+  if (h > 0) {
+    return h + ':' + pad(m) + ':' + pad(s);
+  }
+  return m + ':' + pad(s);
+}
+
+function extractVideoId(input) {
+  // Standard watch URL
+  const watchMatch = input.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+  if (watchMatch) return watchMatch[1];
+
+  // Short URL youtu.be/ID
+  const shortMatch = input.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+  if (shortMatch) return shortMatch[1];
+
+  return null;
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    const toast = document.getElementById('toast');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 1200);
+  });
+}
+  </script>
+</body>
+</html>
