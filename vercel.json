@@ -11,6 +11,7 @@
     { "source": "/saved_text", "destination": "/saved_text.html" },
     { "source": "/paths", "destination": "/paths.html" },
     { "source": "/parser", "destination": "/parser.html" },
+    { "source": "/youtube_timestamp_parse", "destination": "/youtube_timestamp_parse.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

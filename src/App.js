@@ -452,6 +452,10 @@ function App() {
                 <span className="tool-name">Text Splitter</span>
                 <span className="tool-desc">Split markdown or structured text into individual sections and download each as a .txt file.</span>
               </a>
+              <a href="/youtube_timestamp_parse" className="tool-link">
+                <span className="tool-name">YouTube Timestamp</span>
+                <span className="tool-desc">Paste a YouTube URL with a timestamp to extract and copy the time in seconds.</span>
+              </a>
             </div>
           </div>
         </div>
