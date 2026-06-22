@@ -167,12 +167,14 @@ input[type="text"]:focus {
 
     <div class="section">
       <h3>Input</h3>
-      <label>YouTube URL or timestamp</label>
-      <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=...&t=1:04:00 or 1:04:00 or &t=4106s" autofocus>
+      <label>YouTube URL (auto-strips existing &t= param)</label>
+      <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=QoQBzR1NIqI or with &t=4106s" autofocus>
+      <label style="margin-top:12px">Timestamp</label>
+      <input type="text" id="timeInput" placeholder="1:04:00 or 4:00 or 4106">
     </div>
 
     <div class="section result-box" id="resultBox">
-      <h3>Parsed Timestamp</h3>
+      <h3>Result</h3>
       <div class="result-row">
         <span class="result-label">Seconds</span>
         <div class="result-right">
@@ -200,29 +202,53 @@ input[type="text"]:focus {
   <div class="copied-toast" id="toast">Copied!</div>
 
   <script>
-const input = document.getElementById('urlInput');
+const urlInput = document.getElementById('urlInput');
+const timeInput = document.getElementById('timeInput');
 const resultBox = document.getElementById('resultBox');
 const resultSeconds = document.getElementById('resultSeconds');
 const resultFormatted = document.getElementById('resultFormatted');
 const urlRow = document.getElementById('urlRow');
 const urlLink = document.getElementById('urlLink');
 
-input.addEventListener('input', () => {
-  const val = input.value.trim();
-  if (!val) {
+// When pasting a URL with &t=, strip the t param and put it in the time input
+urlInput.addEventListener('input', () => {
+  const val = urlInput.value.trim();
+  const tParam = val.match(/[?&]t=([^&\s]+)/);
+  if (tParam) {
+    // Strip t param from URL
+    const cleanUrl = val.replace(/[?&]t=[^&\s]+/, '').replace(/\?$/, '').replace(/&$/, '');
+    // Fix case where removing &t= leaves ?&
+    urlInput.value = cleanUrl.replace('?&', '?');
+    // Put the extracted time into the time input
+    const seconds = parseTimeValue(tParam[1]);
+    if (seconds !== null) {
+      timeInput.value = formatTime(seconds);
+    } else {
+      timeInput.value = tParam[1];
+    }
+  }
+  update();
+});
+
+timeInput.addEventListener('input', update);
+
+function update() {
+  const timeVal = timeInput.value.trim();
+  if (!timeVal) {
     resultBox.style.display = 'none';
     return;
   }
 
-  const seconds = parseTimestamp(val);
+  const seconds = parseTimeInput(timeVal);
   if (seconds !== null) {
     resultBox.style.display = 'block';
     resultSeconds.textContent = seconds + 's';
     resultFormatted.textContent = formatTime(seconds);
 
-    const videoId = extractVideoId(val);
+    const videoId = extractVideoId(urlInput.value.trim());
     if (videoId) {
-      const url = 'https://www.youtube.com/watch?v=' + videoId + '&t=' + seconds + 's';
+      const baseUrl = 'https://www.youtube.com/watch?v=' + videoId;
+      const url = baseUrl + '&t=' + seconds + 's';
       urlLink.href = url;
       urlLink.textContent = url;
       urlRow.style.display = 'flex';
@@ -232,23 +258,17 @@ input.addEventListener('input', () => {
   } else {
     resultBox.style.display = 'none';
   }
-});
+}
 
-function parseTimestamp(input) {
-  // Try to extract t= parameter (supports t=4106s, t=4106, t=1:04:00, t=4:00)
-  const tParam = input.match(/[?&]t=([^&\s]+)/);
-  if (tParam) {
-    return parseTimeValue(tParam[1]);
-  }
-
-  // Try to find a bare timestamp in the input (HH:MM:SS or MM:SS)
-  const timeMatch = input.match(/(\d{1,2}:\d{2}:\d{2}|\d{1,2}:\d{2})/);
+function parseTimeInput(val) {
+  // Try colon format first (HH:MM:SS or MM:SS)
+  const timeMatch = val.match(/^(\d{1,2}:\d{2}:\d{2}|\d{1,2}:\d{2})$/);
   if (timeMatch) {
     return parseTimeValue(timeMatch[1]);
   }
 
-  // Try plain number (seconds)
-  const numMatch = input.match(/^(\d+)s?$/);
+  // Try plain number (with optional trailing s)
+  const numMatch = val.match(/^(\d+)s?$/);
   if (numMatch) {
     return parseInt(numMatch[1], 10);
   }
