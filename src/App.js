@@ -14,6 +14,7 @@ function App() {
   const [dbxSignedIn, setDbxSignedIn] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'saved'
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   // Shortcuts state
   const [shortcuts, setShortcuts] = useState([]);
@@ -369,6 +370,51 @@ function App() {
 
   return (
     <div className="App">
+      {isMobile && (
+        <button className="gear-button" onClick={() => setShowMobileMenu(true)} title="More tools & actions">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        </button>
+      )}
+
+      {showMobileMenu && (
+        <div className="mobile-menu-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowMobileMenu(false); }}>
+          <div className="mobile-menu-panel">
+            <div className="mobile-menu-header">
+              <span>Tools & Actions</span>
+              <button className="mobile-menu-close" onClick={() => setShowMobileMenu(false)}>&times;</button>
+            </div>
+
+            <div className="mobile-menu-section-title">Tools</div>
+            <div className="mobile-menu-grid">
+              <a href="/accumulator" className="mobile-menu-item">Clipboard Accumulator</a>
+              <a href="/saved_text" className="mobile-menu-item">Saved Text</a>
+              <a href="/images" className="mobile-menu-item">Clip Images</a>
+              <a href="/screenshots" className="mobile-menu-item">Screenshots</a>
+              <a href="/paths" className="mobile-menu-item">Path Links</a>
+              <a href="/qr_bridge" className="mobile-menu-item">QR Bridge</a>
+              <a href="/splitter" className="mobile-menu-item">Text Splitter</a>
+              <a href="/youtube_timestamp_parse" className="mobile-menu-item">YouTube Timestamp</a>
+            </div>
+
+            <div className="mobile-menu-section-title">Actions</div>
+            <div className="mobile-menu-actions">
+              <button onClick={() => { pasteFromClipboard(); setShowMobileMenu(false); }}>Paste from Clipboard</button>
+              <button onClick={() => { setTextboxContent(savedContent); setShowMobileMenu(false); }}>Paste from Saved</button>
+              <button onClick={() => { append(); setShowMobileMenu(false); }}>Append</button>
+              <label className="mobile-menu-toggle">
+                <span>Auto Save</span>
+                <div className={`toggle-switch ${autoSave ? 'active' : ''}`} onClick={() => setAutoSave(!autoSave)}>
+                  <div className="toggle-knob" />
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="container">
         <h1>Clipboard Manager</h1>
 
