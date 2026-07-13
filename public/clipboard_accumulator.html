@@ -276,14 +276,6 @@
     margin-bottom: 0.3rem;
   }
 
-  .clip-block-check {
-    width: 15px;
-    height: 15px;
-    accent-color: var(--accent);
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-
   .clip-block-meta {
     font-size: 0.65rem;
     color: var(--ink-faint);
@@ -291,34 +283,6 @@
     text-transform: uppercase;
     font-family: 'Fraunces', serif;
     flex: 1;
-  }
-
-  .clip-block-copy {
-    padding: 0.2rem 0.5rem;
-    font-size: 0.6rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    font-family: 'Fraunces', serif;
-    font-weight: 500;
-    background: var(--paper);
-    color: var(--ink-soft);
-    border: 1px solid var(--rule);
-    border-radius: 2px;
-    cursor: pointer;
-    transition: all 0.15s;
-    flex-shrink: 0;
-  }
-
-  .clip-block-copy:hover {
-    background: var(--ink);
-    color: var(--paper);
-    border-color: var(--ink);
-  }
-
-  .clip-block-copy.copied {
-    background: #e8f0e3;
-    color: #2c4a2c;
-    border-color: #6a8a6a;
   }
 
   .clip-block-delete {
@@ -344,11 +308,7 @@
   .clip-block-text {
     white-space: pre-wrap;
     word-wrap: break-word;
-    padding-left: 1.6rem;
-  }
-
-  .clip-block-footer {
-    padding-top: 0.4rem;
+    padding-left: 0;
   }
 
   /* Flash for append feedback */
@@ -407,8 +367,6 @@
 
     <div class="actions-bar">
       <button class="btn primary" id="appendClipboard">Append Clipboard</button>
-      <input type="checkbox" id="selectAll" class="clip-block-check" title="Select / deselect all">
-      <button class="btn" id="copySelected">Copy Selected</button>
       <button class="btn" id="copyAll">Copy All</button>
       <button class="btn" id="downloadTxt">Download .txt</button>
       <button class="btn danger" id="clearAll">Clear</button>
@@ -423,7 +381,7 @@
     <section class="pane">
       <div class="pane-header">
         <span class="pane-label">Accumulated Text</span>
-        <button class="btn btn-mini" id="copyTop">Copy</button>
+        <button class="btn btn-mini" id="copyTop">Copy All</button>
       </div>
       <div class="accumulated-text" id="accumulated">
         <div class="empty-state">
@@ -434,7 +392,7 @@
 
     <div class="help">
       <strong>How it works</strong>
-      Click <em>Append Clipboard</em> to grab your clipboard. Content with <code>---</code> separators auto-splits into individual snippets. Use checkboxes to select snippets, then <em>Copy Selected</em> for just those, or <em>Copy All</em> for everything. Each snippet has its own Copy and Delete buttons. <kbd>Cmd+2</kbd> → type <kbd>a</kbd> to send collected clipboard here automatically.
+      Click <em>Append Clipboard</em> to grab your clipboard. Content with <code>---</code> separators auto-splits into individual snippets. Use <em>Copy All</em> to copy everything, or delete individual snippets with the × button. <kbd>Cmd+2</kbd> → type <kbd>a</kbd> to send collected clipboard here automatically.
     </div>
   </div>
 
@@ -460,7 +418,7 @@
   }
 
   function getAllText() {
-    return blocks.join('\n\n');
+    return blocks.join('\n\n---\n\n');
   }
 
   function updateStats() {
@@ -493,22 +451,10 @@
       const header = document.createElement('div');
       header.className = 'clip-block-header';
 
-      const check = document.createElement('input');
-      check.type = 'checkbox';
-      check.className = 'clip-block-check';
-      check.dataset.index = i;
-      header.appendChild(check);
-
       const meta = document.createElement('span');
       meta.className = 'clip-block-meta';
       meta.textContent = 'Snippet ' + (i + 1);
       header.appendChild(meta);
-
-      const copyBtn = document.createElement('button');
-      copyBtn.className = 'clip-block-copy';
-      copyBtn.textContent = 'Copy';
-      copyBtn.addEventListener('click', () => copySnippet(i, copyBtn));
-      header.appendChild(copyBtn);
 
       const delBtn = document.createElement('button');
       delBtn.className = 'clip-block-delete';
@@ -527,40 +473,10 @@
       content.textContent = text;
       block.appendChild(content);
 
-      // Bottom checkbox synced with top checkbox
-      const footer = document.createElement('div');
-      footer.className = 'clip-block-footer';
-      const checkBottom = document.createElement('input');
-      checkBottom.type = 'checkbox';
-      checkBottom.className = 'clip-block-check';
-      checkBottom.checked = check.checked;
-      // Sync both checkboxes
-      checkBottom.addEventListener('change', () => { check.checked = checkBottom.checked; });
-      check.addEventListener('change', () => { checkBottom.checked = check.checked; });
-      footer.appendChild(checkBottom);
-      block.appendChild(footer);
-
       accumulated.appendChild(block);
     });
 
     updateStats();
-  }
-
-  async function copySnippet(index, btn) {
-    try {
-      await navigator.clipboard.writeText(blocks[index]);
-    } catch (err) {
-      const ta = document.createElement('textarea');
-      ta.value = blocks[index];
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-    }
-    const orig = btn.textContent;
-    btn.classList.add('copied');
-    btn.textContent = 'Copied';
-    setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 1400);
   }
 
   function appendText(text) {
@@ -644,53 +560,7 @@
   }
 
   document.getElementById('copyAll').addEventListener('click', (e) => copyAll(e.target));
-  document.getElementById('copyTop').addEventListener('click', (e) => copySelectedOrAll(e.target));
-
-  // Copy selected if any checked, otherwise copy all
-  async function copySelectedOrAll(btn) {
-    if (blocks.length === 0) return;
-    const checks = accumulated.querySelectorAll('.clip-block-check:checked');
-    const uniqueIndices = [...new Set(Array.from(checks).map(cb => parseInt(cb.dataset.index)).filter(i => !isNaN(i)))];
-    const text = uniqueIndices.length > 0
-      ? uniqueIndices.map(i => blocks[i]).join('\n\n')
-      : getAllText();
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch (err) {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-    }
-    flashCopied(btn);
-  }
-
-  // Select all toggle
-  document.getElementById('selectAll').addEventListener('change', (e) => {
-    const checks = accumulated.querySelectorAll('.clip-block-check');
-    checks.forEach(cb => cb.checked = e.target.checked);
-  });
-
-  // Copy Selected — only checked snippets
-  document.getElementById('copySelected').addEventListener('click', async (e) => {
-    const checks = accumulated.querySelectorAll('.clip-block-check:checked');
-    if (checks.length === 0) return;
-    const selected = Array.from(checks).map(cb => blocks[parseInt(cb.dataset.index)]);
-    const text = selected.join('\n\n');
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch (err) {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-    }
-    flashCopied(e.target);
-  });
+  document.getElementById('copyTop').addEventListener('click', (e) => copyAll(e.target));
 
   // Download .txt
   document.getElementById('downloadTxt').addEventListener('click', () => {
