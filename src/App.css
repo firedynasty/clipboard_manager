@@ -275,7 +275,7 @@ button:hover {
   background: #f9fafb;
   padding: 16px;
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border: 2px solid #6b7280;
   max-height: 500px;
   overflow-y: auto;
 }
@@ -788,5 +788,28 @@ button:hover {
   color: #e0e0e0;
   font-size: 14px;
   font-weight: 500;
+}
+
+/* Toast notification */
+.toast-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #10b981;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  animation: toastFadeInOut 2s ease-in-out forwards;
+}
+
+@keyframes toastFadeInOut {
+  0% { opacity: 0; transform: translateY(-10px); }
+  15% { opacity: 1; transform: translateY(0); }
+  70% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-10px); }
 }
 

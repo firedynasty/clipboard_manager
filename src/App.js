@@ -27,6 +27,7 @@ function App() {
   const [promptsLoading, setPromptsLoading] = useState(false);
   const [promptContent, setPromptContent] = useState(null);
   const [promptName, setPromptName] = useState('');
+  const [toastMessage, setToastMessage] = useState(null);
 
   const lookupRef = useRef(null);
   const labelRef = useRef(null);
@@ -54,6 +55,11 @@ function App() {
       if (idx === -1) return { label: line.trim(), content: '' };
       return { label: line.substring(0, idx).trim(), content: line.substring(idx + 1).trim() };
     });
+  };
+
+  const showToast = (message) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(null), 2000);
   };
 
   const loadShortcuts = useCallback(async () => {
@@ -159,7 +165,7 @@ function App() {
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(savedContent);
-      alert('Copied to clipboard!');
+      showToast('Copied to clipboard!');
     } catch (error) {
       alert('Failed to copy to clipboard');
     }
@@ -370,6 +376,7 @@ function App() {
 
   return (
     <div className="App">
+      {toastMessage && <div className="toast-notification">{toastMessage}</div>}
       {isMobile && (
         <button className="gear-button" onClick={() => setShowMobileMenu(true)} title="More tools & actions">
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -518,7 +525,11 @@ function App() {
 
         {savedContent && (
           <div className="saved-section">
-            <div className="saved-content">{savedContent}</div>
+            <div className="saved-content" onClick={async () => {
+              await loadFromDropbox();
+              await new Promise(r => setTimeout(r, 200));
+              showToast('Copied to clipboard!');
+            }} style={{ cursor: 'pointer' }}>{savedContent}</div>
             <div className="saved-actions">
               <button onClick={loadFromDropbox} className="go-link-button">
                 Refresh
