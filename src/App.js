@@ -29,6 +29,14 @@ function App() {
   const [promptName, setPromptName] = useState('');
   const [toastMessage, setToastMessage] = useState(null);
 
+  // Accumulator state
+  const [accInput, setAccInput] = useState('');
+  const [accOutput, setAccOutput] = useState('');
+  const [accStatus, setAccStatus] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef(null);
+  const accInputRef = useRef(null);
+
   const lookupRef = useRef(null);
   const labelRef = useRef(null);
   const contentRef = useRef(null);
@@ -374,6 +382,94 @@ function App() {
     setSavedContent('');
   };
 
+  // Accumulator functions
+  const accFlashStatus = (msg) => {
+    setAccStatus(msg);
+    setTimeout(() => setAccStatus(''), 2000);
+  };
+
+  const toggleSpeech = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert('Speech recognition not supported in this browser. Use Chrome.');
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+    recognitionRef.current = recognition;
+
+    let finalTranscript = accInput;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event) => {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+      setAccInput(finalTranscript + interim);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      setAccInput(finalTranscript);
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
+
+  const accSave = () => {
+    const text = accInput.trim();
+    if (!text) return;
+    setAccOutput(prev => prev + text);
+    setAccInput('');
+    accFlashStatus('Saved');
+  };
+
+  const accAppendClipboard = async () => {
+    try {
+      const clipText = await navigator.clipboard.readText();
+      if (!clipText.trim()) return;
+      setAccOutput(prev => prev + clipText);
+      accFlashStatus('Pasted from clipboard');
+    } catch {
+      alert('Failed to read clipboard.');
+    }
+  };
+
+  const accCopyAll = async () => {
+    if (!accOutput.trim()) return;
+    try {
+      await navigator.clipboard.writeText(accOutput);
+      accFlashStatus('Copied all');
+    } catch {
+      alert('Failed to copy.');
+    }
+  };
+
+  const accClear = () => {
+    setAccOutput('');
+    accFlashStatus('Cleared');
+  };
+
   return (
     <div className="App">
       {toastMessage && <div className="toast-notification">{toastMessage}</div>}
@@ -656,6 +752,39 @@ function App() {
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        <div className="accumulator-section">
+          <h2>Accumulator</h2>
+          <div className="accumulator-input-row">
+            <textarea
+              ref={accInputRef}
+              className={isListening ? 'listening' : ''}
+              value={accInput}
+              onChange={(e) => setAccInput(e.target.value)}
+              placeholder="Speak or type here..."
+              rows="3"
+            />
+            <div className="accumulator-buttons">
+              <button className={`mic-button${isListening ? ' active' : ''}`} onClick={toggleSpeech}>
+                {isListening ? 'Stop' : 'Mic'}
+              </button>
+              <button className="save-button" onClick={accSave}>Save</button>
+              <button className="acc-paste-button" onClick={accAppendClipboard}>Paste</button>
+            </div>
+          </div>
+          <textarea
+            className="accumulator-output"
+            value={accOutput}
+            onChange={(e) => setAccOutput(e.target.value)}
+            placeholder="Accumulated text appears here... (editable)"
+            rows="6"
+          />
+          <div className="accumulator-actions">
+            <button className="acc-copy-all" onClick={accCopyAll}>Copy All</button>
+            <button className="acc-clear-btn" onClick={accClear}>Clear</button>
+            {accStatus && <span className="acc-status">{accStatus}</span>}
           </div>
         </div>
       </div>

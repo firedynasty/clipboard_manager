@@ -813,3 +813,114 @@ button:hover {
   100% { opacity: 0; transform: translateY(-10px); }
 }
 
+/* Accumulator Section */
+.accumulator-section {
+  margin-top: 24px;
+  border-top: 2px solid #e5e7eb;
+  padding-top: 20px;
+}
+
+.accumulator-section h2 {
+  font-size: 20px;
+  color: #1f2937;
+  margin-bottom: 12px;
+}
+
+.accumulator-input-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.accumulator-input-row textarea {
+  flex: 1;
+  min-height: 60px;
+}
+
+.accumulator-input-row textarea.listening {
+  border-color: #ef4444;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+}
+
+.accumulator-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mic-button {
+  background: #ef4444;
+}
+
+.mic-button:hover {
+  background: #dc2626;
+}
+
+.mic-button.active {
+  background: #22c55e;
+  animation: micPulse 1.5s infinite;
+}
+
+@keyframes micPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  50% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+}
+
+.acc-paste-button {
+  background: #f59e0b;
+}
+
+.acc-paste-button:hover {
+  background: #d97706;
+}
+
+.accumulator-output {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  font-size: 14px;
+  font-family: 'Monaco', 'Consolas', monospace;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  resize: vertical;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.accumulator-output:focus {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.3);
+}
+
+.accumulator-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  align-items: center;
+}
+
+.acc-copy-all {
+  background: #8b5cf6;
+}
+
+.acc-copy-all:hover {
+  background: #7c3aed;
+}
+
+.acc-clear-btn {
+  background: #ef4444;
+}
+
+.acc-clear-btn:hover {
+  background: #dc2626;
+}
+
+.acc-status {
+  font-size: 13px;
+  color: #6b7280;
+  margin-left: auto;
+  font-weight: 500;
+}
+
