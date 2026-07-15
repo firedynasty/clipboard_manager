@@ -401,29 +401,6 @@ function App() {
     setTimeout(() => setAccStatus(''), 2000);
   };
 
-  // Save: read current Dropbox file → append textbox content → write back
-  const accSave = async () => {
-    const text = textboxContent.trim();
-    if (!text) return;
-    if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) {
-      alert('Sign in to Dropbox first');
-      return;
-    }
-    try {
-      let current = '';
-      try {
-        current = await window.dropboxDownloadFile(ACCUMULATOR_PATH) || '';
-      } catch {}
-      const updated = current ? current + '\n' + text : text;
-      await window.dropboxUploadFile(ACCUMULATOR_PATH, updated);
-      setAccOutput(updated);
-      if (isMobile) setTextboxContent('');
-      accFlashStatus('Appended to accumulator');
-    } catch {
-      alert('Failed to append to accumulator');
-    }
-  };
-
   // Load/refresh accumulator from Dropbox
   const accLoad = async () => {
     if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) return;
