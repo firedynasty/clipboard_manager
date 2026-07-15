@@ -150,7 +150,7 @@ function App() {
           try {
             let current = '';
             try { current = await window.dropboxDownloadFile(ACCUMULATOR_PATH) || ''; } catch {}
-            const updated = current.trim() ? current.trim() + '\n' + textboxContent : textboxContent;
+            const updated = current.trim() ? current.trim() + '\n\n' + textboxContent : textboxContent;
             await window.dropboxUploadFile(ACCUMULATOR_PATH, updated);
             setAccOutput(updated);
           } catch {}

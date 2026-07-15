@@ -841,12 +841,12 @@ button:hover {
 .accumulator-display {
   white-space: pre-wrap;
   word-wrap: break-word;
-  min-height: 80px;
+  min-height: 100px;
 }
 
 .accumulator-output {
   width: 100%;
-  min-height: 120px;
+  min-height: 270px;
   padding: 12px;
   font-size: 14px;
   font-family: 'Monaco', 'Consolas', monospace;
