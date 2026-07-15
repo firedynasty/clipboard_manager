@@ -4,6 +4,7 @@ import './App.css';
 const DROPBOX_PATH = '/blob_vercel_replacement/blob_clipboard_content.txt';
 const QR_DROPBOX_PATH = '/blob_vercel_replacement/blob_clipboard_qr.txt';
 const PROMPTS_FOLDER = '/blob_vercel_replacement/clipboard_prompts';
+const ACCUMULATOR_PATH = '/blob_vercel_replacement/blob_clipboard_accumulator.txt';
 
 
 function App() {
@@ -29,13 +30,10 @@ function App() {
   const [promptName, setPromptName] = useState('');
   const [toastMessage, setToastMessage] = useState(null);
 
-  // Accumulator state
-  const [accInput, setAccInput] = useState('');
+  // Accumulator state (Dropbox-backed)
   const [accOutput, setAccOutput] = useState('');
   const [accStatus, setAccStatus] = useState('');
-  const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef(null);
-  const accInputRef = useRef(null);
+  const [isEditingAcc, setIsEditingAcc] = useState(false);
 
   const lookupRef = useRef(null);
   const labelRef = useRef(null);
@@ -97,6 +95,11 @@ function App() {
       try {
         const files = await window.dropboxListFolder(PROMPTS_FOLDER);
         if (files) setPromptFiles(files);
+      } catch {}
+      // Load accumulator
+      try {
+        const accText = await window.dropboxDownloadFile(ACCUMULATOR_PATH);
+        if (accText) setAccOutput(accText);
       } catch {}
     };
     loadData();
@@ -382,76 +385,56 @@ function App() {
     setSavedContent('');
   };
 
-  // Accumulator functions
+  // Accumulator functions (Dropbox-backed)
   const accFlashStatus = (msg) => {
     setAccStatus(msg);
     setTimeout(() => setAccStatus(''), 2000);
   };
 
-  const toggleSpeech = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Speech recognition not supported in this browser. Use Chrome.');
-      return;
-    }
-
-    if (isListening) {
-      recognitionRef.current.stop();
-      return;
-    }
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-    recognitionRef.current = recognition;
-
-    let finalTranscript = accInput;
-
-    recognition.onstart = () => {
-      setIsListening(true);
-    };
-
-    recognition.onresult = (event) => {
-      let interim = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
-        } else {
-          interim += event.results[i][0].transcript;
-        }
-      }
-      setAccInput(finalTranscript + interim);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-      setAccInput(finalTranscript);
-    };
-
-    recognition.onerror = () => {
-      setIsListening(false);
-    };
-
-    recognition.start();
-  };
-
-  const accSave = () => {
-    const text = accInput.trim();
+  // Save: read current Dropbox file → append textbox content → write back
+  const accSave = async () => {
+    const text = textboxContent.trim();
     if (!text) return;
-    setAccOutput(prev => prev + text);
-    setAccInput('');
-    accFlashStatus('Saved');
+    if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) {
+      alert('Sign in to Dropbox first');
+      return;
+    }
+    try {
+      let current = '';
+      try {
+        current = await window.dropboxDownloadFile(ACCUMULATOR_PATH) || '';
+      } catch {}
+      const updated = current ? current + '\n' + text : text;
+      await window.dropboxUploadFile(ACCUMULATOR_PATH, updated);
+      setAccOutput(updated);
+      if (isMobile) setTextboxContent('');
+      accFlashStatus('Appended to accumulator');
+    } catch {
+      alert('Failed to append to accumulator');
+    }
   };
 
-  const accAppendClipboard = async () => {
+  // Load/refresh accumulator from Dropbox
+  const accLoad = async () => {
+    if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) return;
     try {
-      const clipText = await navigator.clipboard.readText();
-      if (!clipText.trim()) return;
-      setAccOutput(prev => prev + clipText);
-      accFlashStatus('Pasted from clipboard');
+      const text = await window.dropboxDownloadFile(ACCUMULATOR_PATH);
+      setAccOutput(text || '');
+      accFlashStatus('Loaded');
     } catch {
-      alert('Failed to read clipboard.');
+      alert('Failed to load accumulator');
+    }
+  };
+
+  // Save edits back to Dropbox (called on blur)
+  const accSaveEdits = async () => {
+    setIsEditingAcc(false);
+    if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) return;
+    try {
+      await window.dropboxUploadFile(ACCUMULATOR_PATH, accOutput || ' ');
+      accFlashStatus('Edits saved');
+    } catch {
+      alert('Failed to save edits');
     }
   };
 
@@ -465,9 +448,15 @@ function App() {
     }
   };
 
-  const accClear = () => {
-    setAccOutput('');
-    accFlashStatus('Cleared');
+  const accClear = async () => {
+    if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) return;
+    try {
+      await window.dropboxUploadFile(ACCUMULATOR_PATH, ' ');
+      setAccOutput('');
+      accFlashStatus('Cleared');
+    } catch {
+      alert('Failed to clear accumulator');
+    }
   };
 
   return (
@@ -640,6 +629,41 @@ function App() {
           </div>
         )}
 
+        <div className="accumulator-section">
+          <div className="accumulator-header">
+            <h2>Accumulator</h2>
+            <div className="accumulator-header-buttons">
+              <button className="save-button" onClick={accSave}>Save</button>
+              {!isEditingAcc ? (
+                <button className="shortcuts-btn" style={{ background: '#3b82f6' }} onClick={() => setIsEditingAcc(true)}>Edit</button>
+              ) : (
+                <button className="shortcuts-btn" style={{ background: '#10b981' }} onClick={accSaveEdits}>Done</button>
+              )}
+              <button className="shortcuts-btn refresh-btn" onClick={accLoad}>Refresh</button>
+            </div>
+          </div>
+          {isEditingAcc ? (
+            <textarea
+              className="accumulator-output"
+              value={accOutput}
+              onChange={(e) => setAccOutput(e.target.value)}
+              onBlur={accSaveEdits}
+              placeholder="Edit accumulated text..."
+              rows="8"
+              autoFocus
+            />
+          ) : (
+            <div className="saved-content accumulator-display" onClick={accCopyAll} style={{ cursor: 'pointer' }}>
+              {accOutput || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>No accumulated text yet. Type in the textbox above and click Save to append.</span>}
+            </div>
+          )}
+          <div className="accumulator-actions">
+            <button className="acc-copy-all" onClick={accCopyAll}>Copy All</button>
+            <button className="acc-clear-btn" onClick={accClear}>Clear</button>
+            {accStatus && <span className="acc-status">{accStatus}</span>}
+          </div>
+        </div>
+
         <div className="prompts-section">
           <div className="prompts-header">
             <h2>Prompts <span className="prompts-path-hint">(blob_vercel_replacement/clipboard_prompts)</span></h2>
@@ -752,39 +776,6 @@ function App() {
                 </div>
               );
             })}
-          </div>
-        </div>
-
-        <div className="accumulator-section">
-          <h2>Accumulator</h2>
-          <div className="accumulator-input-row">
-            <textarea
-              ref={accInputRef}
-              className={isListening ? 'listening' : ''}
-              value={accInput}
-              onChange={(e) => setAccInput(e.target.value)}
-              placeholder="Speak or type here..."
-              rows="3"
-            />
-            <div className="accumulator-buttons">
-              <button className={`mic-button${isListening ? ' active' : ''}`} onClick={toggleSpeech}>
-                {isListening ? 'Stop' : 'Mic'}
-              </button>
-              <button className="save-button" onClick={accSave}>Save</button>
-              <button className="acc-paste-button" onClick={accAppendClipboard}>Paste</button>
-            </div>
-          </div>
-          <textarea
-            className="accumulator-output"
-            value={accOutput}
-            onChange={(e) => setAccOutput(e.target.value)}
-            placeholder="Accumulated text appears here... (editable)"
-            rows="6"
-          />
-          <div className="accumulator-actions">
-            <button className="acc-copy-all" onClick={accCopyAll}>Copy All</button>
-            <button className="acc-clear-btn" onClick={accClear}>Clear</button>
-            {accStatus && <span className="acc-status">{accStatus}</span>}
           </div>
         </div>
       </div>
