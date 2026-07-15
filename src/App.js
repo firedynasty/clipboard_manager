@@ -145,6 +145,16 @@ function App() {
       setSaveStatus('saving');
       try {
         await saveContent(textboxContent);
+        // Also append to accumulator
+        if (window.getDropboxAccessToken && window.getDropboxAccessToken()) {
+          try {
+            let current = '';
+            try { current = await window.dropboxDownloadFile(ACCUMULATOR_PATH) || ''; } catch {}
+            const updated = current.trim() ? current.trim() + '\n' + textboxContent : textboxContent;
+            await window.dropboxUploadFile(ACCUMULATOR_PATH, updated);
+            setAccOutput(updated);
+          } catch {}
+        }
         if (isMobile) setTextboxContent('');
         setSaveStatus('saved');
         setTimeout(() => setSaveStatus(null), 2000);
@@ -633,7 +643,6 @@ function App() {
           <div className="accumulator-header">
             <h2>Accumulator</h2>
             <div className="accumulator-header-buttons">
-              <button className="save-button" onClick={accSave}>Save</button>
               {!isEditingAcc ? (
                 <button className="shortcuts-btn" style={{ background: '#3b82f6' }} onClick={() => setIsEditingAcc(true)}>Edit</button>
               ) : (
