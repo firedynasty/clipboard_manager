@@ -595,6 +595,8 @@ function App() {
           <div className="save-status-banner">✓ Saved to Dropbox</div>
         )}
 
+        <div className="logged-label">Logged:</div>
+
         {savedContent && (
           <div className="saved-section">
             <div className="saved-content" onClick={async () => {
