@@ -647,20 +647,9 @@ button:hover {
     background: #0061ff;
   }
 
-  /* Saved content: show but compact */
+  /* Saved content: hidden on mobile */
   .saved-section {
-    margin-top: 20px;
-    padding-top: 16px;
-  }
-
-  .saved-content {
-    font-size: 14px;
-    max-height: 200px;
-  }
-
-  .saved-actions {
-    flex-direction: column;
-    gap: 8px;
+    display: none;
   }
 
   .save-status-banner {
