@@ -472,6 +472,10 @@
       </div>
       <div class="viewer-content" id="viewerContent"></div>
     </div>
+    <div id="dbxStatus" style="text-align:center; font-size:0.75rem; color:var(--success); letter-spacing:0.06em; text-transform:uppercase; display:none;">Saved to Dropbox ✓</div>
+    <button class="btn btn-secondary" onclick="dbxSignIn()" id="dbxSignInBtn" style="width:100%; text-align:center;">
+      Sign in to Dropbox to save
+    </button>
     <button class="btn btn-secondary" onclick="goToGenerator()" style="width:100%; text-align:center;">
       ← Create your own QR code
     </button>
@@ -493,6 +497,101 @@
 <div class="copy-toast" id="toast">Copied to clipboard ✓</div>
 
 <script>
+  // ── Dropbox integration ──────────────────────────────────────────────────
+  let dropboxAccessToken = null;
+  const CLIPBOARD_PATH = '/blob_vercel_replacement/blob_clipboard_content.txt';
+
+  function generateCodeVerifier() {
+    const array = new Uint8Array(64);
+    crypto.getRandomValues(array);
+    return btoa(String.fromCharCode(...array)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  async function generateCodeChallenge(verifier) {
+    const data = new TextEncoder().encode(verifier);
+    const digest = await crypto.subtle.digest('SHA-256', data);
+    return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  async function fetchDropboxAppKey() {
+    if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+      return localStorage.getItem('dropbox-app-key') || prompt('Enter your Dropbox App Key:') || '';
+    }
+    try {
+      const res = await fetch('/api/dropbox-key');
+      const data = await res.json();
+      return data.key || '';
+    } catch { return ''; }
+  }
+
+  async function dbxSignIn() {
+    const appKey = await fetchDropboxAppKey();
+    if (!appKey) { alert('Dropbox App Key not available'); return; }
+    if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+      localStorage.setItem('dropbox-app-key', appKey);
+    }
+    const verifier = generateCodeVerifier();
+    const challenge = await generateCodeChallenge(verifier);
+    sessionStorage.setItem('dropbox_code_verifier', verifier);
+    // Save current hash so we can restore it after OAuth redirect
+    sessionStorage.setItem('qr_pending_hash', window.location.hash);
+    const redirectUri = window.location.origin + window.location.pathname;
+    window.location.href = 'https://www.dropbox.com/oauth2/authorize?client_id=' + appKey
+      + '&response_type=code&code_challenge=' + challenge
+      + '&code_challenge_method=S256&redirect_uri=' + encodeURIComponent(redirectUri)
+      + '&token_access_type=online';
+  }
+
+  async function dropboxUpload(path, content) {
+    const res = await fetch('https://content.dropboxapi.com/2/files/upload', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + dropboxAccessToken,
+        'Dropbox-API-Arg': JSON.stringify({ path, mode: { '.tag': 'overwrite' }, mute: true }),
+        'Content-Type': 'application/octet-stream',
+      },
+      body: content,
+    });
+    if (!res.ok) throw new Error('Upload failed');
+  }
+
+  // Handle OAuth redirect and restore hash
+  async function handleDropboxOAuth() {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    if (!code) return false;
+
+    const verifier = sessionStorage.getItem('dropbox_code_verifier');
+    const appKey = await fetchDropboxAppKey();
+    if (!verifier || !appKey) return false;
+
+    const redirectUri = window.location.origin + window.location.pathname;
+    const body = new URLSearchParams({ code, grant_type: 'authorization_code', client_id: appKey, redirect_uri: redirectUri, code_verifier: verifier });
+    try {
+      const res = await fetch('https://api.dropboxapi.com/oauth2/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      });
+      const data = await res.json();
+      if (data.access_token) {
+        dropboxAccessToken = data.access_token;
+        sessionStorage.removeItem('dropbox_code_verifier');
+        // Restore hash so viewer shows the content
+        const pendingHash = sessionStorage.getItem('qr_pending_hash') || '';
+        sessionStorage.removeItem('qr_pending_hash');
+        window.history.replaceState({}, document.title, window.location.pathname + pendingHash);
+        return true;
+      }
+    } catch (err) { console.error('Dropbox auth error:', err); }
+    return false;
+  }
+
+  function updateDbxButtons() {
+    document.getElementById('dbxSignInBtn').style.display = dropboxAccessToken ? 'none' : '';
+  }
+  // ── End Dropbox ──────────────────────────────────────────────────────────
+
   let currentMode = 'text';
   let currentURL = '';
   let qrInstance = null;
@@ -680,7 +779,15 @@
     // Store for copy
     contentDiv.dataset.raw = decoded;
 
-    // Previously auto-saved to server — removed (Dropbox auth not available on this page)
+    updateDbxButtons();
+
+    // Auto-save to Dropbox clipboard if already signed in
+    if (dropboxAccessToken) {
+      dropboxUpload(CLIPBOARD_PATH, decoded).then(() => {
+        document.getElementById('dbxStatus').style.display = '';
+        showToast('Saved to Dropbox clipboard ✓');
+      }).catch(() => {});
+    }
   }
 
   function copyContent() {
@@ -717,7 +824,10 @@
   }
 
   // Init
-  (function() {
+  (async function() {
+    // Handle Dropbox OAuth redirect first (restores hash if present)
+    await handleDropboxOAuth();
+
     // Auto-fill base URL if we're on a real domain
     const origin = window.location.origin;
     if (origin && origin !== 'null' && !origin.includes('localhost')) {
