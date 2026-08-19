@@ -557,24 +557,18 @@ function App() {
         </div>
 
         <div className="buttons">
-          {!isMobile && (
-            <button onClick={pasteFromClipboard} className="paste-button">
-              Paste from Clipboard
-            </button>
-          )}
-          {!isMobile && (
-            <button onClick={() => setTextboxContent(savedContent)} className="paste-button">
-              Paste from Saved
-            </button>
-          )}
+          <button onClick={pasteFromClipboard} className="paste-button">
+            Paste from Clipboard
+          </button>
+          <button onClick={() => setTextboxContent(savedContent)} className="paste-button">
+            Paste from Saved
+          </button>
           <button onClick={save} className="save-button" disabled={saveStatus === 'saving'}>
             {isMobile && saveStatus === 'saving' ? 'Saving…' : 'Save'}
           </button>
-          {!isMobile && (
-            <button onClick={append} className="save-button">
-              Append
-            </button>
-          )}
+          <button onClick={append} className="save-button">
+            Append
+          </button>
           <button
             onClick={() =>
               dbxSignedIn ? loadFromDropbox() : (window.dropboxSignIn && window.dropboxSignIn())

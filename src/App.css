@@ -606,14 +606,6 @@ button:hover {
     margin-bottom: 16px;
   }
 
-  /* Hide desktop-only sections on mobile */
-  .tools-section,
-  .tools-hint,
-  .shortcuts-section,
-  .prompts-section,
-  .auto-save-toggle {
-    display: none;
-  }
 
   /* Big, easy-to-tap textarea */
   textarea {
@@ -647,10 +639,6 @@ button:hover {
     background: #0061ff;
   }
 
-  /* Saved content: hidden on mobile */
-  .saved-section {
-    display: none;
-  }
 
   .save-status-banner {
     font-size: 16px;

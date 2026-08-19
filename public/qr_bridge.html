@@ -570,7 +570,7 @@
         return;
       }
       const encoded = encodeContent(content);
-      currentURL = baseURL.replace(/\/+$/, '') + '/#' + encoded;
+      currentURL = baseURL.replace(/\/+$/, '') + '#' + encoded;
     }
 
     // Check URL length (QR codes handle up to ~4000 chars well)
