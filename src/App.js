@@ -143,24 +143,6 @@ function App() {
     }
   };
 
-  const append = async () => {
-    if (textboxContent.trim()) {
-      setSaveStatus('saving');
-      try {
-        const combined = savedContent
-          ? savedContent + '\n' + textboxContent
-          : textboxContent;
-        await saveContent(combined);
-        if (isMobile) setTextboxContent('');
-        setSaveStatus('saved');
-        setTimeout(() => setSaveStatus(null), 2000);
-      } catch (error) {
-        setSaveStatus(null);
-        alert('Failed to append to Dropbox');
-      }
-    }
-  };
-
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(savedContent);
@@ -408,8 +390,6 @@ function App() {
             <div className="mobile-menu-section-title">Actions</div>
             <div className="mobile-menu-actions">
               <button onClick={() => { pasteFromClipboard(); setShowMobileMenu(false); }}>Paste from Clipboard</button>
-              <button onClick={() => { setTextboxContent(savedContent); setShowMobileMenu(false); }}>Paste from Saved</button>
-              <button onClick={() => { append(); setShowMobileMenu(false); }}>Append</button>
               <label className="mobile-menu-toggle">
                 <span>Auto Save</span>
                 <div className={`toggle-switch ${autoSave ? 'active' : ''}`} onClick={() => setAutoSave(!autoSave)}>
@@ -487,14 +467,8 @@ function App() {
           <button onClick={pasteFromClipboard} className="paste-button">
             Paste from Clipboard
           </button>
-          <button onClick={() => setTextboxContent(savedContent)} className="paste-button">
-            Paste from Saved
-          </button>
           <button onClick={save} className="save-button" disabled={saveStatus === 'saving'}>
-            {isMobile && saveStatus === 'saving' ? 'Saving…' : 'Save'}
-          </button>
-          <button onClick={append} className="save-button">
-            Append
+            {saveStatus === 'saving' ? 'Saving…' : 'Save'}
           </button>
           <button
             onClick={() =>
