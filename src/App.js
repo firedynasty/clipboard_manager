@@ -4,8 +4,6 @@ import './App.css';
 const DROPBOX_PATH = '/blob_vercel_replacement/blob_clipboard_content.txt';
 const QR_DROPBOX_PATH = '/blob_vercel_replacement/blob_clipboard_qr.txt';
 const PROMPTS_FOLDER = '/blob_vercel_replacement/clipboard_prompts';
-const ACCUMULATOR_PATH = '/blob_vercel_replacement/blob_clipboard_accumulator.txt';
-
 
 function App() {
   const [textboxContent, setTextboxContent] = useState('');
@@ -29,11 +27,6 @@ function App() {
   const [promptContent, setPromptContent] = useState(null);
   const [promptName, setPromptName] = useState('');
   const [toastMessage, setToastMessage] = useState(null);
-
-  // Accumulator state (Dropbox-backed)
-  const [accOutput, setAccOutput] = useState('');
-  const [accStatus, setAccStatus] = useState('');
-  const [isEditingAcc, setIsEditingAcc] = useState(false);
 
   const lookupRef = useRef(null);
   const labelRef = useRef(null);
@@ -96,11 +89,6 @@ function App() {
         const files = await window.dropboxListFolder(PROMPTS_FOLDER);
         if (files) setPromptFiles(files);
       } catch {}
-      // Load accumulator
-      try {
-        const accText = await window.dropboxDownloadFile(ACCUMULATOR_PATH);
-        if (accText) setAccOutput(accText);
-      } catch {}
     };
     loadData();
   }, []);
@@ -145,16 +133,6 @@ function App() {
       setSaveStatus('saving');
       try {
         await saveContent(textboxContent);
-        // Also append to accumulator
-        if (window.getDropboxAccessToken && window.getDropboxAccessToken()) {
-          try {
-            let current = '';
-            try { current = await window.dropboxDownloadFile(ACCUMULATOR_PATH) || ''; } catch {}
-            const updated = current.trim() ? current.trim() + '\n\n' + textboxContent : textboxContent;
-            await window.dropboxUploadFile(ACCUMULATOR_PATH, updated);
-            setAccOutput(updated);
-          } catch {}
-        }
         if (isMobile) setTextboxContent('');
         setSaveStatus('saved');
         setTimeout(() => setSaveStatus(null), 2000);
@@ -395,57 +373,6 @@ function App() {
     setSavedContent('');
   };
 
-  // Accumulator functions (Dropbox-backed)
-  const accFlashStatus = (msg) => {
-    setAccStatus(msg);
-    setTimeout(() => setAccStatus(''), 2000);
-  };
-
-  // Load/refresh accumulator from Dropbox
-  const accLoad = async () => {
-    if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) return;
-    try {
-      const text = await window.dropboxDownloadFile(ACCUMULATOR_PATH);
-      setAccOutput(text || '');
-      accFlashStatus('Loaded');
-    } catch {
-      alert('Failed to load accumulator');
-    }
-  };
-
-  // Save edits back to Dropbox (called on blur)
-  const accSaveEdits = async () => {
-    setIsEditingAcc(false);
-    if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) return;
-    try {
-      await window.dropboxUploadFile(ACCUMULATOR_PATH, accOutput || ' ');
-      accFlashStatus('Edits saved');
-    } catch {
-      alert('Failed to save edits');
-    }
-  };
-
-  const accCopyAll = async () => {
-    if (!accOutput.trim()) return;
-    try {
-      await navigator.clipboard.writeText(accOutput);
-      accFlashStatus('Copied all');
-    } catch {
-      alert('Failed to copy.');
-    }
-  };
-
-  const accClear = async () => {
-    if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) return;
-    try {
-      await window.dropboxUploadFile(ACCUMULATOR_PATH, ' ');
-      setAccOutput('');
-      accFlashStatus('Cleared');
-    } catch {
-      alert('Failed to clear accumulator');
-    }
-  };
-
   return (
     <div className="App">
       {toastMessage && <div className="toast-notification">{toastMessage}</div>}
@@ -611,40 +538,6 @@ function App() {
             </div>
           </div>
         )}
-
-        <div className="accumulator-section">
-          <div className="accumulator-header">
-            <h2>Accumulator</h2>
-            <div className="accumulator-header-buttons">
-              {!isEditingAcc ? (
-                <button className="shortcuts-btn" style={{ background: '#3b82f6' }} onClick={() => setIsEditingAcc(true)}>Edit</button>
-              ) : (
-                <button className="shortcuts-btn" style={{ background: '#10b981' }} onClick={accSaveEdits}>Done</button>
-              )}
-              <button className="shortcuts-btn refresh-btn" onClick={accLoad}>Refresh</button>
-            </div>
-          </div>
-          {isEditingAcc ? (
-            <textarea
-              className="accumulator-output"
-              value={accOutput}
-              onChange={(e) => setAccOutput(e.target.value)}
-              onBlur={accSaveEdits}
-              placeholder="Edit accumulated text..."
-              rows="8"
-              autoFocus
-            />
-          ) : (
-            <div className="saved-content accumulator-display" onClick={accCopyAll} style={{ cursor: 'pointer' }}>
-              {accOutput || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>No accumulated text yet. Type in the textbox above and click Save to append.</span>}
-            </div>
-          )}
-          <div className="accumulator-actions">
-            <button className="acc-copy-all" onClick={accCopyAll}>Copy All</button>
-            <button className="acc-clear-btn" onClick={accClear}>Clear</button>
-            {accStatus && <span className="acc-status">{accStatus}</span>}
-          </div>
-        </div>
 
         <div className="prompts-section">
           <div className="prompts-header">
