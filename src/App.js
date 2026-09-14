@@ -464,9 +464,6 @@ function App() {
         </div>
 
         <div className="buttons">
-          <button onClick={pasteFromClipboard} className="paste-button">
-            Paste from Clipboard
-          </button>
           <button onClick={save} className="save-button" disabled={saveStatus === 'saving'}>
             {saveStatus === 'saving' ? 'Saving…' : 'Save'}
           </button>
