@@ -94,14 +94,15 @@ function App() {
   }, []);
 
   const saveContent = useCallback(async (content, { silent = false } = {}) => {
-    if (content.trim()) {
-      setSavedContent(content);
+    const trimmed = content.trim();
+    if (trimmed) {
+      setSavedContent(trimmed);
       if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) {
         if (!silent) alert('Sign in to Dropbox first');
         return;
       }
       try {
-        await window.dropboxUploadFile(DROPBOX_PATH, content);
+        await window.dropboxUploadFile(DROPBOX_PATH, trimmed);
       } catch (error) {
         if (!silent) throw error;
       }
@@ -129,11 +130,12 @@ function App() {
   };
 
   const save = async () => {
-    if (textboxContent.trim()) {
+    const trimmed = textboxContent.trim();
+    if (trimmed) {
       setSaveStatus('saving');
       try {
-        await saveContent(textboxContent);
-        if (isMobile) setTextboxContent('');
+        await saveContent(trimmed);
+        setTextboxContent(isMobile ? '' : trimmed);
         setSaveStatus('saved');
         setTimeout(() => setSaveStatus(null), 2000);
       } catch (error) {
