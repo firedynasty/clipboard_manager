@@ -4,6 +4,9 @@ import './App.css';
 const DROPBOX_PATH = '/blob_vercel_replacement/blob_clipboard_content.txt';
 const QR_DROPBOX_PATH = '/blob_vercel_replacement/blob_clipboard_qr.txt';
 const PROMPTS_FOLDER = '/blob_vercel_replacement/clipboard_prompts';
+// Same OAuth client as the chess-analysis app — its authorized origins must
+// include this app's origins (localhost:3000 + this app's Vercel domain).
+const GOOGLE_CLIENT_ID = '1095683227908-7ro25k16mprkf408i3lf583gti8v759b.apps.googleusercontent.com';
 
 function App() {
   const [textboxContent, setTextboxContent] = useState('');
@@ -142,6 +145,33 @@ function App() {
         setSaveStatus(null);
         alert('Failed to save to Dropbox');
       }
+    }
+  };
+
+  const append = async () => {
+    const trimmed = textboxContent.trim();
+    if (!trimmed) return;
+    if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) {
+      alert('Sign in to Dropbox first');
+      return;
+    }
+    setSaveStatus('saving');
+    try {
+      let existing = '';
+      try {
+        existing = (await window.dropboxDownloadFile(DROPBOX_PATH)) || '';
+      } catch {}
+      const combined = existing.trim()
+        ? existing.replace(/\s+$/, '') + '\n' + trimmed
+        : trimmed;
+      await window.dropboxUploadFile(DROPBOX_PATH, combined);
+      setSavedContent(combined);
+      setTextboxContent(isMobile ? '' : trimmed);
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus(null), 2000);
+    } catch (error) {
+      setSaveStatus(null);
+      alert('Failed to append to Dropbox');
     }
   };
 
@@ -357,6 +387,146 @@ function App() {
     setSavedContent('');
   };
 
+  // ---- Google Docs: sign in, pick a recent Doc, OCR an image straight into it ----
+
+  const [gToken, setGToken] = useState(null);
+  const [gDocs, setGDocs] = useState([]);
+  const [gDoc, setGDoc] = useState(null); // { id, name } — the chosen recent Doc
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const gTokenClient = useRef(null);
+  const ocrFileInputRef = useRef(null);
+
+  const fetchRecentDocs = useCallback(async (token) => {
+    if (!token) return;
+    try {
+      const q = encodeURIComponent("mimeType='application/vnd.google-apps.document' and trashed=false");
+      const r = await fetch(
+        'https://www.googleapis.com/drive/v3/files?q=' + q +
+        '&orderBy=viewedByMeTime+desc&pageSize=10&fields=files(id,name)',
+        { headers: { Authorization: 'Bearer ' + token } }
+      );
+      const data = await r.json();
+      setGDocs(data.files || []);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const init = () => {
+      if (window.google && window.google.accounts) {
+        gTokenClient.current = window.google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: 'https://www.googleapis.com/auth/drive', // list recent Docs + append via Docs API
+          callback: (resp) => {
+            if (resp.access_token) {
+              setGToken(resp.access_token);
+              fetchRecentDocs(resp.access_token);
+            } else {
+              alert('Google sign-in failed: ' + (resp.error || 'unknown error'));
+            }
+          },
+        });
+      } else {
+        setTimeout(init, 100);
+      }
+    };
+    init();
+  }, [fetchRecentDocs]);
+
+  const googleSignIn = () => {
+    if (gToken) {
+      try { window.google.accounts.oauth2.revoke(gToken); } catch {}
+      setGToken(null);
+      setGDocs([]);
+      setGDoc(null);
+    } else if (gTokenClient.current) {
+      gTokenClient.current.requestAccessToken();
+    } else {
+      alert('Google API not loaded yet. Try again.');
+    }
+  };
+
+  // Inserts text at the END of the chosen Doc — never replaces existing content.
+  const gAppendToDoc = async (text) => {
+    if (!gDoc) throw new Error('Pick a recent Google Doc first');
+    const auth = { Authorization: 'Bearer ' + gToken };
+    const doc = await fetch('https://docs.googleapis.com/v1/documents/' + gDoc.id, { headers: auth })
+      .then((r) => r.json());
+    const endIndex = doc.body.content[doc.body.content.length - 1].endIndex;
+    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const insertAt = Math.max(1, endIndex - 1);
+    const toInsert = (endIndex > 2 ? '\n\n' : '') + normalized;
+    const r = await fetch('https://docs.googleapis.com/v1/documents/' + gDoc.id + ':batchUpdate', {
+      method: 'POST',
+      headers: { ...auth, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requests: [{ insertText: { location: { index: insertAt }, text: toInsert } }] }),
+    });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      throw new Error((e.error && e.error.message) || ('HTTP ' + r.status));
+    }
+  };
+
+  // Downscale to ~1536px before sending (keeps vision cost sane on phone photos).
+  const imageToDataUrl = (file) => new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 1536;
+      const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+      if (scale === 1) {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result);
+        fr.onerror = () => reject(new Error('Could not read the image'));
+        fr.readAsDataURL(file);
+        return;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.naturalWidth * scale);
+      canvas.height = Math.round(img.naturalHeight * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.9));
+    };
+    img.onerror = () => reject(new Error('Not an image file'));
+    img.src = url;
+  });
+
+  // OCR an image and append the extracted text straight to the chosen Doc —
+  // no staging in the textarea. On append failure the text lands in the
+  // textarea instead so the OCR result is never lost.
+  const ocrImageToDoc = async (file) => {
+    if (!file) return;
+    if (!gToken) { alert('Sign in to Google first'); return; }
+    if (!gDoc) { alert('Pick a recent Google Doc first'); return; }
+    setOcrBusy(true);
+    showToast('OCR: reading image…');
+    try {
+      const dataUrl = await imageToDataUrl(file);
+      showToast('OCR: extracting text…');
+      const r = await fetch('/api/image-to-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataUrl }),
+      });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error || ('HTTP ' + r.status));
+      const text = (data.content || '').trim();
+      if (!text) throw new Error('No text found in the image');
+      showToast('Appending to Doc…');
+      try {
+        await gAppendToDoc(text);
+        showToast('Appended to "' + gDoc.name + '"');
+      } catch (appendErr) {
+        setTextboxContent(text);
+        alert('OCR worked but appending failed: ' + appendErr.message + '\n\nThe extracted text is in the input box.');
+      }
+    } catch (err) {
+      alert('OCR failed: ' + err.message);
+    } finally {
+      setOcrBusy(false);
+    }
+  };
+
   return (
     <div className="App">
       {toastMessage && <div className="toast-notification">{toastMessage}</div>}
@@ -452,6 +622,20 @@ function App() {
         <textarea
           value={textboxContent}
           onChange={(e) => setTextboxContent(e.target.value)}
+          onPaste={(e) => {
+            const items = e.clipboardData && e.clipboardData.items;
+            if (!items) return;
+            for (const item of items) {
+              if (item.type.indexOf('image/') === 0) {
+                const f = item.getAsFile();
+                if (f) {
+                  e.preventDefault();
+                  ocrImageToDoc(f);
+                }
+                return;
+              }
+            }
+          }}
           placeholder="Paste or type text here..."
           rows="3"
         />
@@ -469,6 +653,9 @@ function App() {
           <button onClick={save} className="save-button" disabled={saveStatus === 'saving'}>
             {saveStatus === 'saving' ? 'Saving…' : 'Save'}
           </button>
+          <button onClick={append} className="append-button" disabled={saveStatus === 'saving'}>
+            {saveStatus === 'saving' ? 'Saving…' : 'Append'}
+          </button>
           <button
             onClick={() =>
               dbxSignedIn ? loadFromDropbox() : (window.dropboxSignIn && window.dropboxSignIn())
@@ -484,6 +671,46 @@ function App() {
           >
             {dbxSignedIn ? (isMobile ? 'Dropbox ✓' : 'DB: Load') : (isMobile ? 'Sign in to Dropbox' : 'DB: Sign In')}
           </button>
+        </div>
+
+        <div className="buttons google-row">
+          <button onClick={googleSignIn} className="google-button">
+            {gToken ? 'G Sign Out' : 'G Sign In'}
+          </button>
+          <select
+            className="gdoc-select"
+            value={gDoc ? gDoc.id : ''}
+            disabled={!gToken}
+            onFocus={() => fetchRecentDocs(gToken)}
+            onChange={(e) => {
+              const d = gDocs.find((x) => x.id === e.target.value);
+              setGDoc(d || null);
+            }}
+          >
+            <option value="">{gToken ? 'Pick a recent Google Doc…' : 'Sign in for Google Docs'}</option>
+            {gDocs.map((d) => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => ocrFileInputRef.current && ocrFileInputRef.current.click()}
+            className="ocr-button"
+            disabled={ocrBusy || !gToken || !gDoc}
+            title="OCR an image with OpenAI and append the text straight to the end of the selected Google Doc. You can also paste an image into the input box."
+          >
+            {ocrBusy ? 'OCR…' : '📷 OCR → Doc'}
+          </button>
+          <input
+            type="file"
+            accept="image/*"
+            hidden
+            ref={ocrFileInputRef}
+            onChange={(e) => {
+              const f = e.target.files && e.target.files[0];
+              e.target.value = '';
+              if (f) ocrImageToDoc(f);
+            }}
+          />
         </div>
         {saveStatus === 'saved' && (
           <div className="save-status-banner">✓ Saved to Dropbox</div>

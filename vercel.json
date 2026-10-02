@@ -12,6 +12,6 @@
     { "source": "/paths", "destination": "/paths.html" },
     { "source": "/parser", "destination": "/parser.html" },
     { "source": "/youtube_timestamp_parse", "destination": "/youtube_timestamp_parse.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!static/|ws$|ws/).*)", "destination": "/index.html" }
   ]
 }

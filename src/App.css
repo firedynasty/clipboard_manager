@@ -191,6 +191,56 @@ button:hover {
   background: #059669;
 }
 
+.append-button {
+  background: #0ea5e9;
+}
+
+.append-button:hover {
+  background: #0284c7;
+}
+
+.google-row {
+  margin-top: 10px;
+}
+
+.google-button {
+  background: #ea4335;
+}
+
+.google-button:hover {
+  background: #d33426;
+}
+
+.gdoc-select {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: #0f3460;
+  color: #eee;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.gdoc-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ocr-button {
+  background: #e67e22;
+}
+
+.ocr-button:hover {
+  background: #d35400;
+}
+
+.ocr-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .saved-actions {
   display: flex;
   gap: 12px;
@@ -625,9 +675,24 @@ button:hover {
   }
 
   /* Save button — prominent */
-  .save-button {
+  .save-button,
+  .append-button {
     font-size: 17px;
     padding: 16px;
+    border-radius: 10px;
+  }
+
+  /* Google row — matches the stacked full-width buttons */
+  .google-button,
+  .ocr-button {
+    font-size: 15px;
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .gdoc-select {
+    font-size: 15px;
+    padding: 14px;
     border-radius: 10px;
   }
 
