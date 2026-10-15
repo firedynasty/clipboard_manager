@@ -416,6 +416,14 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) seenIt(); });
   document.addEventListener('click', seenIt);
   document.addEventListener('keydown', seenIt);
+
+  document.getElementById('zoomBtn').addEventListener('click', () => view.classList.toggle('zoom'));
+
+  (async () => {
+    await window._dropboxReady;
+    updateBtn();
+    if (token()) startPolling();
+  })();
 </script>
 </body>
 </html>
