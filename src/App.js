@@ -395,6 +395,9 @@ function App() {
   const [ocrBusy, setOcrBusy] = useState(false);
   const gTokenClient = useRef(null);
   const ocrFileInputRef = useRef(null);
+  const [qrOpen, setQrOpen] = useState(false);
+  const [qrBusy, setQrBusy] = useState(false);
+  const qrInputRef = useRef(null);
 
   const fetchRecentDocs = useCallback(async (token) => {
     if (!token) return;
@@ -527,6 +530,40 @@ function App() {
     }
   };
 
+  // Decode a scanned qr_bridge URL (…/qr_bridge#<base64>) back to its text.
+  // Anything that isn't a qr_bridge payload (e.g. a plain URL QR) is used as-is.
+  const decodeQrScan = (scanned) => {
+    const raw = scanned.trim();
+    const i = raw.indexOf('#');
+    if (i === -1 || !/qr/i.test(raw.slice(0, i))) return raw;
+    const payload = raw.slice(i + 1);
+    try {
+      const bytes = Uint8Array.from(atob(payload), (c) => c.charCodeAt(0));
+      return new TextDecoder().decode(bytes);
+    } catch {
+      try { return decodeURIComponent(payload); } catch { return raw; }
+    }
+  };
+
+  // Scanner types the URL into the box + Enter; decode it and append to the chosen Doc.
+  const qrToDoc = async (scanned) => {
+    if (!scanned || !scanned.trim()) return;
+    if (!gToken) { alert('Sign in to Google first'); return; }
+    if (!gDoc) { alert('Pick a recent Google Doc first'); return; }
+    setQrBusy(true);
+    try {
+      const text = decodeQrScan(scanned);
+      await gAppendToDoc(text);
+      showToast('Appended to "' + gDoc.name + '"');
+      if (qrInputRef.current) qrInputRef.current.value = '';
+    } catch (err) {
+      alert('QR → Doc failed: ' + err.message);
+    } finally {
+      setQrBusy(false);
+      if (qrInputRef.current) qrInputRef.current.focus();
+    }
+  };
+
   return (
     <div className="App">
       {toastMessage && <div className="toast-notification">{toastMessage}</div>}
@@ -551,7 +588,7 @@ function App() {
             <div className="mobile-menu-grid">
               <a href="/accumulator" className="mobile-menu-item">Clipboard Accumulator</a>
               <a href="/saved_text" className="mobile-menu-item">Saved Text</a>
-              <a href="/images" className="mobile-menu-item">Clip Images</a>
+              <a href="/latest_screenshot.html" className="mobile-menu-item">Latest Screenshot</a>
               <a href="/screenshots" className="mobile-menu-item">Screenshots</a>
               <a href="/paths" className="mobile-menu-item">Path Links</a>
               <a href="/qr_bridge" className="mobile-menu-item">QR Bridge</a>
@@ -585,9 +622,9 @@ function App() {
             <span className="tool-name">Saved Text</span>
             <span className="tool-desc">Search and copy saved text notes from Dropbox by name or folder.</span>
           </a>
-          <a href="/images" className="tool-link">
-            <span className="tool-name">Clip Images</span>
-            <span className="tool-desc">Upload images from your phone and view them on your laptop. 5 replaceable slots.</span>
+          <a href="/latest_screenshot.html" className="tool-link">
+            <span className="tool-name">Latest Screenshot</span>
+            <span className="tool-desc">Shows the newest screenshot sent from the Mac (Caps + 0) via Dropbox. Updates automatically.</span>
           </a>
           <a href="/screenshots" className="tool-link">
             <span className="tool-name">Screenshots</span>
@@ -700,6 +737,31 @@ function App() {
           >
             {ocrBusy ? 'OCR…' : '📷 OCR → Doc'}
           </button>
+          <button
+            onClick={() => {
+              setQrOpen((o) => !o);
+              setTimeout(() => qrInputRef.current && qrInputRef.current.focus(), 0);
+            }}
+            className="ocr-button"
+            disabled={qrBusy || !gToken || !gDoc}
+            title="Scan a QR Bridge code with your scanner and append its text to the end of the selected Google Doc."
+          >
+            {qrBusy ? 'QR…' : '▦ QR → Doc'}
+          </button>
+          {qrOpen && (
+            <input
+              ref={qrInputRef}
+              type="text"
+              className="ocr-button"
+              placeholder="Scan QR now (or paste its URL) + Enter"
+              disabled={qrBusy}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') qrToDoc(e.target.value);
+                if (e.key === 'Escape') setQrOpen(false);
+              }}
+              style={{ minWidth: 240 }}
+            />
+          )}
           <input
             type="file"
             accept="image/*"
