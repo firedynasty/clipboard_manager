@@ -7,24 +7,56 @@
 <style>
   :root { --bg: #111; --fg: #eee; --muted: #888; --accent: #4da3ff; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { display: flex; flex-direction: column; }
   html, body { height: 100%; background: var(--bg); color: var(--fg); font-family: -apple-system, system-ui, sans-serif; }
   .bar { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.75rem; border-bottom: 1px solid #333; font-size: 0.85rem; }
   .bar button { background: #222; color: var(--fg); border: 1px solid #444; padding: 0.3rem 0.8rem; border-radius: 4px; cursor: pointer; }
   .bar button:hover { border-color: var(--accent); }
   #status { color: var(--muted); flex: 1; }
-  #view { height: calc(100% - 2.6rem); display: flex; align-items: center; justify-content: center; overflow: auto; }
-  #view img { max-width: 100%; max-height: 100%; object-fit: contain; }
-  #view.zoom img { max-width: none; max-height: none; }
+  #view { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: #333; }
+  .pane { background: var(--bg); display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .pane-head { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0.6rem; font-size: 0.75rem; color: var(--muted); border-bottom: 1px solid #222; }
+  .badge { background: var(--accent); color: #000; border-radius: 3px; padding: 0 0.4rem; font-weight: 600; display: none; }
+  .pane.newest .badge { display: inline-block; }
+  .pane-body { flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto; min-height: 0; }
+  .pane-body img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  #view.zoom .pane-body img { max-width: none; max-height: none; }
+  .done { padding: 0.4rem 0.75rem; border-bottom: 1px solid #333; background: #161616; font-size: 0.85rem; }
+  .done-top { display: flex; align-items: baseline; gap: 0.75rem; color: var(--muted); }
+  .done-top .now { margin-left: auto; font-variant-numeric: tabular-nums; }
+  #doneRows { max-height: 9em; overflow: auto; }
+  .srow { display: flex; gap: 0.6rem; align-items: baseline; padding: 0.15rem 0; }
+  .srow .sicon { width: 1.1rem; text-align: center; }
+  .srow.working .sicon, .srow.working .stime { color: var(--accent); }
+  .srow.done .sicon { color: #5fd38d; }
+  .srow .sproj { font-weight: 600; white-space: nowrap; }
+  .srow .stime { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .srow .stext { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .done.fresh { animation: flash 2s ease-out; }
+  @keyframes flash { from { background: #1f4d2e; } to { background: #161616; } }
   .ph { color: var(--muted); text-align: center; padding: 2rem; line-height: 1.6; }
+  #view.single { grid-template-columns: 1fr; }
+  #view.single .pane:not(.active) { display: none; }
+  @media (max-width: 700px) { #view { grid-template-columns: 1fr; grid-auto-rows: 1fr; } }
 </style>
 </head>
 <body>
 <div class="bar">
   <button id="dbxBtn">Dropbox: Sign In</button>
   <span id="status">Not connected</span>
+  <button id="prevBtn" title="Left arrow">&#9664;</button>
+  <button id="nextBtn" title="Right arrow">&#9654;</button>
+  <button id="modeBtn">Both</button>
   <button id="zoomBtn">Actual size</button>
 </div>
-<div id="view"><div class="ph">Sign in to Dropbox. Press <b>Caps + 0</b> on the Mac to send a screenshot here.</div></div>
+<div class="done" id="done">
+  <div class="done-top"><span>Claude sessions</span><span class="now" id="nowClock"></span></div>
+  <div id="doneRows"><div class="srow"><span class="stext">Nothing reported yet</span></div></div>
+</div>
+<div id="view" class="single">
+  <div class="pane" id="pane1"><div class="pane-head"><span>Slot 1</span><span class="badge">NEWEST</span><span class="when"></span></div><div class="pane-body"><div class="ph">Sign in to Dropbox. Press <b>Caps + 0</b> on the Mac to send a screenshot (alternates slot 1 / 2).</div></div></div>
+  <div class="pane" id="pane2"><div class="pane-head"><span>Slot 2</span><span class="badge">NEWEST</span><span class="when"></span></div><div class="pane-body"><div class="ph">Waiting for second screenshot.</div></div></div>
+</div>
 
 <script>
 (function() {
@@ -170,16 +202,27 @@
 </script>
 
 <script>
-  const REMOTE_PATH = '/vercel/latest_screenshot.png';
+  const SLOTS = [
+    { path: '/vercel/latest_screenshot.png', pane: 'pane1' },
+    { path: '/vercel/latest_screenshot_second.png', pane: 'pane2' },
+  ];
   const POLL_MS = 3000;
 
   const view = document.getElementById('view');
   const statusEl = document.getElementById('status');
   const dbxBtn = document.getElementById('dbxBtn');
-  let lastHash = null;
   let timer = null;
   let polling = false;
-  let currentUrl = null;
+  let active = 0;
+  const STATUS_DIR = '/vercel/claude_status';
+  const STALE_MS = 2 * 3600 * 1000;     // a "working" session older than this is treated as dead
+  const LOCK_MS = 10 * 1000;            // after a completion, title says "completed" and no timer may show
+  const TITLE = document.title;
+  let sessions = {};                    // file id -> { hash, data }
+  let unseenDone = 0;
+  let lockUntil = 0;
+  let firstStatusLoad = true;
+  SLOTS.forEach(s => { s.el = document.getElementById(s.pane); s.hash = null; s.url = null; s.modified = null; });
 
   const token = () => window.getDropboxAccessToken && window.getDropboxAccessToken();
   const setStatus = t => { statusEl.textContent = t; };
@@ -190,26 +233,149 @@
     return r;
   }
 
+  function showActive() {
+    SLOTS.forEach((s, i) => s.el.classList.toggle('active', i === active));
+  }
+  function step(d) { active = (active + d + SLOTS.length) % SLOTS.length; showActive(); }
+
+  const pad = n => String(n).padStart(2, '0');
+  function fmtClock(ms) {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return h ? h + ':' + pad(m) + ':' + pad(sec) : m + ':' + pad(sec);
+  }
+  function fmtAgo(ms) { return fmtClock(ms) + ' ago'; }
+
+  const liveSessions = () => Object.values(sessions).map(s => s.data)
+    .filter(d => !(d.state === 'working' && Date.now() - d.startedAt > STALE_MS));
+
+  function updateTitle() {
+    const now = Date.now();
+    if (unseenDone && now < lockUntil) {          // 10s lock: only "completed", no timers
+      document.title = '✓ ' + (unseenDone > 1 ? unseenDone + ' completed' : 'completed');
+      return;
+    }
+    const working = liveSessions().filter(d => d.state === 'working');
+    const parts = [];
+    if (unseenDone) parts.push('✓' + unseenDone);
+    if (working.length) {
+      const oldest = Math.min(...working.map(d => d.startedAt));
+      parts.push('⏱ ' + (working.length > 1 ? working.length + ' · ' : '') + fmtClock(now - oldest));
+    }
+    document.title = parts.length ? parts.join(' · ') : TITLE;
+  }
+
+  function tick() {
+    const now = Date.now();
+    document.getElementById('nowClock').textContent = new Date(now).toLocaleTimeString();
+    document.querySelectorAll('[data-live-start]').forEach(el => { el.textContent = fmtClock(now - Number(el.dataset.liveStart)); });
+    document.querySelectorAll('[data-ago]').forEach(el => { el.textContent = fmtAgo(now - Number(el.dataset.ago)); });
+    updateTitle();
+  }
+
+  function span(cls, text) { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; }
+
+  function renderRows() {
+    const box = document.getElementById('doneRows');
+    box.innerHTML = '';
+    const list = liveSessions().sort((a, b) =>
+      (b.state === 'working') - (a.state === 'working') || (b.finishedAt || b.startedAt) - (a.finishedAt || a.startedAt));
+    if (!list.length) { const r = document.createElement('div'); r.className = 'srow'; r.appendChild(span('stext', 'Nothing reported yet')); box.appendChild(r); return; }
+    list.forEach(d => {
+      const row = document.createElement('div');
+      row.className = 'srow ' + d.state;
+      row.appendChild(span('sicon', d.state === 'working' ? '⏱' : '✓'));
+      row.appendChild(span('sproj', d.project || d.session.slice(0, 8)));
+      if (d.state === 'working') {
+        const t = span('stime', ''); t.dataset.liveStart = d.startedAt; row.appendChild(t);
+      } else {
+        // finished: duration is frozen, nothing else can change it
+        row.appendChild(span('stime', 'took ' + fmtClock(d.finishedAt - d.startedAt) + ' · ' + new Date(d.finishedAt).toLocaleTimeString()));
+        const ago = span('stime', ''); ago.dataset.ago = d.finishedAt; row.appendChild(ago);
+      }
+      row.appendChild(span('stext', d.text || ''));
+      box.appendChild(row);
+    });
+    tick();
+  }
+
+  async function pollStatus() {
+    let r = await dbx('https://api.dropboxapi.com/2/files/list_folder', { 'Content-Type': 'application/json' }, JSON.stringify({ path: STATUS_DIR }));
+    if (r.status === 409) return;                 // folder not created yet
+    if (!r.ok) throw new Error('Dropbox error ' + r.status);
+    let d = await r.json();
+    let entries = d.entries;
+    while (d.has_more) {
+      r = await dbx('https://api.dropboxapi.com/2/files/list_folder/continue', { 'Content-Type': 'application/json' }, JSON.stringify({ cursor: d.cursor }));
+      d = await r.json();
+      entries = entries.concat(d.entries);
+    }
+    const seen = {};
+    let completed = false;
+    for (const e of entries) {
+      if (e['.tag'] !== 'file') continue;
+      seen[e.id] = true;
+      const cur = sessions[e.id];
+      if (cur && cur.hash === e.content_hash) continue;
+      const dl = await dbx('https://content.dropboxapi.com/2/files/download', { 'Dropbox-API-Arg': JSON.stringify({ path: e.path_lower }) });
+      if (!dl.ok) continue;
+      let data;
+      try { data = await dl.json(); } catch (err) { continue; }
+      const prev = cur && cur.data;
+      sessions[e.id] = { hash: e.content_hash, data };
+      if (data.state === 'done' && !firstStatusLoad && (!prev || prev.state !== 'done' || prev.finishedAt !== data.finishedAt)) {
+        unseenDone++; completed = true;
+      }
+    }
+    Object.keys(sessions).forEach(id => { if (!seen[id]) delete sessions[id]; });
+    firstStatusLoad = false;
+    if (completed) {
+      lockUntil = Date.now() + LOCK_MS;
+      const el = document.getElementById('done');
+      el.classList.remove('fresh'); void el.offsetWidth; el.classList.add('fresh');
+    }
+    renderRows();
+  }
+
+  // Returns true if the slot has a file on Dropbox.
+  async function pollSlot(s) {
+    const r = await dbx('https://api.dropboxapi.com/2/files/get_metadata', { 'Content-Type': 'application/json' }, JSON.stringify({ path: s.path }));
+    if (r.status === 409) return false;
+    if (!r.ok) throw new Error('Dropbox error ' + r.status);
+    const meta = await r.json();
+    s.modified = new Date(meta.server_modified);
+    if (meta.content_hash !== s.hash) {
+      const d = await dbx('https://content.dropboxapi.com/2/files/download', { 'Dropbox-API-Arg': JSON.stringify({ path: s.path }) });
+      if (!d.ok) throw new Error('Download failed ' + d.status);
+      const url = URL.createObjectURL(await d.blob());
+      const body = s.el.querySelector('.pane-body');
+      body.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = url;
+      body.appendChild(img);
+      if (s.url) URL.revokeObjectURL(s.url);
+      s.url = url;
+      s.hash = meta.content_hash;
+      s.changed = true;
+    }
+    s.el.querySelector('.when').textContent = s.modified.toLocaleTimeString();
+    return true;
+  }
+
   async function poll() {
     if (polling || !token()) return;
     polling = true;
     try {
-      const r = await dbx('https://api.dropboxapi.com/2/files/get_metadata', { 'Content-Type': 'application/json' }, JSON.stringify({ path: REMOTE_PATH }));
-      if (r.status === 409) { setStatus('Waiting for first screenshot (Caps + 0 on the Mac)'); return; }
-      if (!r.ok) throw new Error('Dropbox error ' + r.status);
-      const meta = await r.json();
-      if (meta.content_hash === lastHash) return;
-      const d = await dbx('https://content.dropboxapi.com/2/files/download', { 'Dropbox-API-Arg': JSON.stringify({ path: REMOTE_PATH }) });
-      if (!d.ok) throw new Error('Download failed ' + d.status);
-      const url = URL.createObjectURL(await d.blob());
-      view.innerHTML = '';
-      const img = document.createElement('img');
-      img.src = url;
-      view.appendChild(img);
-      if (currentUrl) URL.revokeObjectURL(currentUrl);
-      currentUrl = url;
-      lastHash = meta.content_hash;
-      setStatus('Updated ' + new Date(meta.server_modified).toLocaleTimeString());
+      await pollStatus();
+      const present = [];
+      for (const s of SLOTS) { if (await pollSlot(s)) present.push(s); }
+      SLOTS.forEach(s => s.el.classList.remove('newest'));
+      if (present.length === 0) { setStatus('Waiting for first screenshot (Caps + 0 on the Mac)'); return; }
+      const newest = present.reduce((a, b) => (b.modified > a.modified ? b : a));
+      if (SLOTS.some(s => s.changed)) { active = SLOTS.indexOf(newest); showActive(); }
+      SLOTS.forEach(s => { s.changed = false; });
+      if (present.length > 1) newest.el.classList.add('newest');
+      setStatus('Updated ' + newest.modified.toLocaleTimeString());
     } catch (e) {
       setStatus(e.message);
     } finally {
@@ -231,13 +397,25 @@
     else window.dropboxSignIn();
   });
 
-  document.getElementById('zoomBtn').addEventListener('click', () => view.classList.toggle('zoom'));
+  document.getElementById('prevBtn').addEventListener('click', () => step(-1));
+  document.getElementById('nextBtn').addEventListener('click', () => step(1));
+  document.getElementById('modeBtn').addEventListener('click', e => {
+    const single = view.classList.toggle('single');
+    e.target.textContent = single ? 'Both' : 'One';
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') { step(-1); e.preventDefault(); }
+    else if (e.key === 'ArrowRight') { step(1); e.preventDefault(); }
+  });
+  showActive();
 
-  (async () => {
-    await window._dropboxReady;
-    updateBtn();
-    if (token()) startPolling();
-  })();
+  setInterval(tick, 1000);
+  tick();
+  const seenIt = () => { unseenDone = 0; lockUntil = 0; updateTitle(); };
+  window.addEventListener('focus', seenIt);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) seenIt(); });
+  document.addEventListener('click', seenIt);
+  document.addEventListener('keydown', seenIt);
 </script>
 </body>
 </html>
