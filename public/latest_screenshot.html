@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Latest Screenshot</title>
+<style>
+  :root { --bg: #111; --fg: #eee; --muted: #888; --accent: #4da3ff; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--fg); font-family: -apple-system, system-ui, sans-serif; }
+  .bar { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.75rem; border-bottom: 1px solid #333; font-size: 0.85rem; }
+  .bar button { background: #222; color: var(--fg); border: 1px solid #444; padding: 0.3rem 0.8rem; border-radius: 4px; cursor: pointer; }
+  .bar button:hover { border-color: var(--accent); }
+  #status { color: var(--muted); flex: 1; }
+  #view { height: calc(100% - 2.6rem); display: flex; align-items: center; justify-content: center; overflow: auto; }
+  #view img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  #view.zoom img { max-width: none; max-height: none; }
+  .ph { color: var(--muted); text-align: center; padding: 2rem; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="bar">
+  <button id="dbxBtn">Dropbox: Sign In</button>
+  <span id="status">Not connected</span>
+  <button id="zoomBtn">Actual size</button>
+</div>
+<div id="view"><div class="ph">Sign in to Dropbox. Press <b>Caps + 0</b> on the Mac to send a screenshot here.</div></div>
+
+<script>
+(function() {
+    let dropboxAccessToken = null;
+    let dropboxAppKey = '';
+    const dbxIsLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+    function generateCodeVerifier() {
+        const array = new Uint8Array(64);
+        crypto.getRandomValues(array);
+        return btoa(String.fromCharCode(...array))
+            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    async function generateCodeChallenge(verifier) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(verifier);
+        const digest = await crypto.subtle.digest('SHA-256', data);
+        return btoa(String.fromCharCode(...new Uint8Array(digest)))
+            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    async function fetchDropboxAppKey() {
+        if (dbxIsLocalhost) {
+            return localStorage.getItem('dropbox-app-key') || '';
+        }
+        try {
+            const res = await fetch('/api/dropbox-key');
+            const data = await res.json();
+            return data.key || '';
+        } catch {
+            return '';
+        }
+    }
+
+    window.getDropboxAccessToken = function() { return dropboxAccessToken; };
+
+    window.dropboxDownloadFile = async function(path) {
+        if (!dropboxAccessToken) return null;
+        const response = await fetch('https://content.dropboxapi.com/2/files/download', {
+            method: 'POST',
+            headers: {
+                Authorization: 'Bearer ' + dropboxAccessToken,
+                'Dropbox-API-Arg': JSON.stringify({ path: path }),
+            },
+        });
+        if (!response.ok) {
+            if (response.status === 409) return null;
+            throw new Error('Download failed');
+        }
+        return await response.text();
+    };
+
+    window.dropboxUploadFile = async function(path, content) {
+        if (!dropboxAccessToken) throw new Error('Not signed into Dropbox');
+        const response = await fetch('https://content.dropboxapi.com/2/files/upload', {
+            method: 'POST',
+            headers: {
+                Authorization: 'Bearer ' + dropboxAccessToken,
+                'Dropbox-API-Arg': JSON.stringify({
+                    path: path, mode: { '.tag': 'overwrite' }, mute: true,
+                }),
+                'Content-Type': 'application/octet-stream',
+            },
+            body: content,
+        });
+        if (!response.ok) throw new Error('Upload failed');
+        return true;
+    };
+
+    window.dropboxSignIn = async function() {
+        let appKey;
+        if (dbxIsLocalhost) {
+            appKey = prompt('Enter your Dropbox App Key:');
+            if (!appKey) return;
+            localStorage.setItem('dropbox-app-key', appKey);
+        } else {
+            appKey = await fetchDropboxAppKey();
+            if (!appKey) { alert('Dropbox App Key not configured on server'); return; }
+        }
+        dropboxAppKey = appKey;
+
+        const verifier = generateCodeVerifier();
+        const challenge = await generateCodeChallenge(verifier);
+        sessionStorage.setItem('dropbox_code_verifier', verifier);
+
+        const redirectUri = window.location.origin + window.location.pathname;
+        const authUrl = 'https://www.dropbox.com/oauth2/authorize?client_id=' + appKey
+            + '&response_type=code&code_challenge=' + challenge
+            + '&code_challenge_method=S256&redirect_uri=' + encodeURIComponent(redirectUri)
+            + '&token_access_type=online';
+        window.location.href = authUrl;
+    };
+
+    window.dropboxSignOut = async function() {
+        if (dropboxAccessToken) {
+            try {
+                await fetch('https://api.dropboxapi.com/2/auth/token/revoke', {
+                    method: 'POST',
+                    headers: { Authorization: 'Bearer ' + dropboxAccessToken },
+                });
+            } catch {}
+        }
+        dropboxAccessToken = null;
+    };
+
+    window._dropboxReady = (async function() {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        if (!code) return;
+
+        const verifier = sessionStorage.getItem('dropbox_code_verifier');
+        const appKey = await fetchDropboxAppKey();
+        if (!verifier || !appKey) return;
+        dropboxAppKey = appKey;
+
+        const redirectUri = window.location.origin + window.location.pathname;
+        const body = new URLSearchParams({
+            code,
+            grant_type: 'authorization_code',
+            client_id: appKey,
+            redirect_uri: redirectUri,
+            code_verifier: verifier,
+        });
+
+        try {
+            const res = await fetch('https://api.dropboxapi.com/oauth2/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body.toString(),
+            });
+            const data = await res.json();
+            if (data.access_token) {
+                dropboxAccessToken = data.access_token;
+                sessionStorage.removeItem('dropbox_code_verifier');
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        } catch (err) {
+            console.error('Dropbox auth error:', err);
+        }
+    })();
+})();
+</script>
+
+<script>
+  const REMOTE_PATH = '/vercel/latest_screenshot.png';
+  const POLL_MS = 3000;
+
+  const view = document.getElementById('view');
+  const statusEl = document.getElementById('status');
+  const dbxBtn = document.getElementById('dbxBtn');
+  let lastHash = null;
+  let timer = null;
+  let polling = false;
+  let currentUrl = null;
+
+  const token = () => window.getDropboxAccessToken && window.getDropboxAccessToken();
+  const setStatus = t => { statusEl.textContent = t; };
+
+  async function dbx(url, headers, body) {
+    const r = await fetch(url, { method: 'POST', headers: { Authorization: 'Bearer ' + token(), ...headers }, body });
+    if (r.status === 401) { stopPolling(); updateBtn(); throw new Error('Dropbox session expired. Sign in again.'); }
+    return r;
+  }
+
+  async function poll() {
+    if (polling || !token()) return;
+    polling = true;
+    try {
+      const r = await dbx('https://api.dropboxapi.com/2/files/get_metadata', { 'Content-Type': 'application/json' }, JSON.stringify({ path: REMOTE_PATH }));
+      if (r.status === 409) { setStatus('Waiting for first screenshot (Caps + 0 on the Mac)'); return; }
+      if (!r.ok) throw new Error('Dropbox error ' + r.status);
+      const meta = await r.json();
+      if (meta.content_hash === lastHash) return;
+      const d = await dbx('https://content.dropboxapi.com/2/files/download', { 'Dropbox-API-Arg': JSON.stringify({ path: REMOTE_PATH }) });
+      if (!d.ok) throw new Error('Download failed ' + d.status);
+      const url = URL.createObjectURL(await d.blob());
+      view.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = url;
+      view.appendChild(img);
+      if (currentUrl) URL.revokeObjectURL(currentUrl);
+      currentUrl = url;
+      lastHash = meta.content_hash;
+      setStatus('Updated ' + new Date(meta.server_modified).toLocaleTimeString());
+    } catch (e) {
+      setStatus(e.message);
+    } finally {
+      polling = false;
+    }
+  }
+
+  function startPolling() { stopPolling(); poll(); timer = setInterval(poll, POLL_MS); }
+  function stopPolling() { if (timer) clearInterval(timer); timer = null; }
+
+  function updateBtn() {
+    const signedIn = !!token();
+    dbxBtn.textContent = signedIn ? 'Dropbox: Connected' : 'Dropbox: Sign In';
+    if (!signedIn) setStatus('Not connected');
+  }
+
+  dbxBtn.addEventListener('click', async () => {
+    if (token()) { await window.dropboxSignOut(); stopPolling(); updateBtn(); }
+    else window.dropboxSignIn();
+  });
+
+  document.getElementById('zoomBtn').addEventListener('click', () => view.classList.toggle('zoom'));
+
+  (async () => {
+    await window._dropboxReady;
+    updateBtn();
+    if (token()) startPolling();
+  })();
+</script>
+</body>
+</html>
