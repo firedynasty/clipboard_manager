@@ -34,6 +34,20 @@
   .srow .stext { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .done.fresh { animation: flash 2s ease-out; }
   @keyframes flash { from { background: #1f4d2e; } to { background: #161616; } }
+  #cc { position: fixed; inset: 0.5rem; z-index: 10; display: none; flex-direction: column; gap: 0.5rem; padding: 0.75rem; border-radius: 10px; background: #1a1a1a; border: 1px solid #444; }
+  #cc.open { display: flex; }
+  #cc .top { display: flex; align-items: center; gap: 0.5rem; }
+  #cc button, #cc input { font: inherit; font-size: 0.85rem; }
+  #cc button { background: #222; color: var(--fg); border: 1px solid #444; padding: 0.3rem 0.8rem; border-radius: 4px; cursor: pointer; }
+  #cc input { background: #0d0d0d; color: var(--fg); border: 1px solid #444; border-radius: 4px; padding: 0.4rem 0.6rem; min-width: 0; }
+  #ccCode { width: 8rem; }
+  #ccStatus { min-height: 1em; font-size: 0.75rem; color: #e8a33c; }
+  #ccLog { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem; }
+  .msg { padding: 0.5rem 0.7rem; border-radius: 8px; font-size: 0.9rem; line-height: 1.4; white-space: pre-wrap; max-width: 92%; }
+  .msg.user { align-self: flex-end; background: #2b3a5a; }
+  .msg.ai { align-self: flex-start; background: #262626; }
+  #cc .ask { display: flex; gap: 0.4rem; }
+  #cc .ask input { flex: 1; }
   .ph { color: var(--muted); text-align: center; padding: 2rem; line-height: 1.6; }
   #view.single { grid-template-columns: 1fr; }
   #view.single .pane:not(.active) { display: none; }
@@ -48,6 +62,17 @@
   <button id="nextBtn" title="Right arrow">&#9654;</button>
   <button id="modeBtn">Both</button>
   <button id="zoomBtn">Actual size</button>
+  <button id="ccBtn" title="Ask OpenAI about the Claude Code session you are on">Ask</button>
+</div>
+<div id="cc">
+  <div class="top">
+    <b>Current Claude Code session</b>
+    <input id="ccCode" type="password" placeholder="Access code" autocomplete="off">
+    <button id="ccClose" style="margin-left:auto">Close</button>
+  </div>
+  <div id="ccStatus"></div>
+  <div id="ccLog"></div>
+  <div class="ask"><input id="ccIn" placeholder="Ask about what's going on&hellip;" autocomplete="off"><button id="ccSend">Send</button></div>
 </div>
 <div class="done" id="done">
   <div class="done-top"><span>Claude sessions</span><span class="now" id="nowClock"></span></div>
@@ -404,6 +429,7 @@
     e.target.textContent = single ? 'Both' : 'One';
   });
   document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;     // typing in the chat box
     if (e.key === 'ArrowLeft') { step(-1); e.preventDefault(); }
     else if (e.key === 'ArrowRight') { step(1); e.preventDefault(); }
   });
@@ -418,6 +444,80 @@
   document.addEventListener('keydown', seenIt);
 
   document.getElementById('zoomBtn').addEventListener('click', () => view.classList.toggle('zoom'));
+
+  // ---- ask OpenAI about the current session ----
+  // /vercel/claude_activity.json is written by claude_hooks_server/upload.js and only ever holds the session you are on.
+  // Fetched fresh on every question; chat goes through /api/tutor (needs OPENAI_API_KEY and ACCESS_CODE on this Vercel project).
+  const cc = document.getElementById('cc'), ccLog = document.getElementById('ccLog'), ccIn = document.getElementById('ccIn'), ccCode = document.getElementById('ccCode');
+  let chat = [], chatBusy = false, chatSession = null;
+  try { ccCode.value = localStorage.getItem('ccCode') || ''; } catch (e) {}
+  ccCode.addEventListener('change', () => { try { localStorage.setItem('ccCode', ccCode.value.trim()); } catch (e) {} });
+  const ccStatus = t => { document.getElementById('ccStatus').textContent = t || ''; };
+  const clock = ms => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  function addMsg(role, text) {
+    const m = document.createElement('div'); m.className = 'msg ' + role; m.textContent = text;
+    ccLog.appendChild(m); ccLog.scrollTop = ccLog.scrollHeight; return m;
+  }
+  function evLine(e) {
+    const what = e.e === 'UserPromptSubmit' ? 'USER PROMPT: ' + (e.d || '') : e.e === 'Stop' ? 'finished' : e.e === 'Notification' ? 'notification: ' + (e.d || '') :
+      e.tool ? e.tool + (e.d ? ' ' + e.d : '') : e.e;
+    return clock(e.t) + ' ' + (e.a ? '[' + e.a + '] ' : '') + what;
+  }
+  async function loadSession() {
+    const txt = await window.dropboxDownloadFile('/vercel/claude_activity.json');
+    if (!txt) throw new Error('No activity file in Dropbox yet. Is the hook uploader running?');
+    const sessions = (JSON.parse(txt).sessions || []).sort((a, b) => b.lastTs - a.lastTs);
+    return sessions[0] || null;
+  }
+  function systemFor(s) {
+    const parts = [
+      'You are a friendly assistant who helps the user keep track of the Claude Code session running on their computer while they wait.',
+      'You only know the activity log below: the user\'s prompts (cut to 500 characters), tool names, file and folder names, the first part of shell commands, and the last reply of a finished session (cut to 1000 characters).',
+      'You cannot see code, diffs, tool results or full replies. If asked about something the log does not cover, say so and suggest what to check. Never invent details.',
+      'Keep answers short (2-5 sentences) and plain. Current time: ' + clock(Date.now()) + '.', ''];
+    if (!s) parts.push('(no session logged)');
+    else {
+      parts.push('## Session in project "' + s.project + '": ' + s.state + ', started ' + clock(s.startedAt) + (s.state === 'done' ? ', finished ' + clock(s.finishedAt) : ''));
+      parts.push('Activity (oldest first):');
+      s.events.slice(-30).forEach(e => parts.push(evLine(e)));
+      if (s.reply) parts.push('Claude\'s last reply: ' + s.reply);
+    }
+    return parts.join('\n');
+  }
+  async function ask(q) {
+    q = (q || '').trim(); if (!q || chatBusy) return;
+    const code = ccCode.value.trim(); if (!code) { ccStatus('Enter the access code first'); return; }
+    if (!token()) { ccStatus('Sign in to Dropbox first'); return; }
+    chatBusy = true; ccStatus('');
+    let out;
+    try {
+      const s = await loadSession();
+      if (s && chatSession && chatSession !== s.session) { chat = []; addMsg('ai', '(new session: ' + s.project + ')'); }
+      chatSession = s ? s.session : null;
+      chat.push({ role: 'user', text: q }); addMsg('user', q); ccIn.value = '';
+      out = addMsg('ai', '…');
+      const r = await fetch('/api/tutor', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessCode: code, model: 'gpt-4.1', system: systemFor(s), messages: chat.slice(-12) }) });
+      if (!r.ok) throw new Error(((await r.json().catch(() => ({}))).error) || 'HTTP ' + r.status);
+      const rd = r.body.getReader(), dec = new TextDecoder(); let acc = '';
+      for (;;) {
+        const x = await rd.read(); if (x.done) break;
+        acc += dec.decode(x.value, { stream: true }); out.textContent = acc; ccLog.scrollTop = ccLog.scrollHeight;
+      }
+      chat.push({ role: 'assistant', text: acc });
+    } catch (e) {
+      if (out) { out.textContent = '[' + e.message + ']'; chat.pop(); } else ccStatus(e.message);
+    } finally { chatBusy = false; }
+  }
+  document.getElementById('ccBtn').addEventListener('click', () => { cc.classList.add('open'); ccIn.focus(); });
+  document.getElementById('ccClose').addEventListener('click', () => cc.classList.remove('open'));
+  document.getElementById('ccSend').addEventListener('click', () => ask(ccIn.value));
+  ccIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ask(ccIn.value); } });
+  (() => {
+    const b = document.createElement('button'); b.textContent = 'What am I working on?'; b.style.alignSelf = 'flex-start';
+    b.addEventListener('click', () => ask('What am I working on right now, and how far along does it look?'));
+    ccLog.appendChild(b);
+  })();
 
   (async () => {
     await window._dropboxReady;
