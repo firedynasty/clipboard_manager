@@ -330,6 +330,10 @@ button:hover {
   overflow-y: auto;
 }
 
+.saved-content.unseen {
+  border-color: #2563eb;
+}
+
 .shortcuts-section {
   margin-top: 24px;
   border-top: 2px solid #e5e7eb;

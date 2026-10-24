@@ -11,6 +11,10 @@ const GOOGLE_CLIENT_ID = '1095683227908-7ro25k16mprkf408i3lf583gti8v759b.apps.go
 function App() {
   const [textboxContent, setTextboxContent] = useState('');
   const [savedContent, setSavedContent] = useState('');
+  // Last saved text the user acknowledged; the box gets a blue border while savedContent differs.
+  const [seenContent, setSeenContent] = useState(() => {
+    try { return localStorage.getItem('clipboardSeenContent'); } catch { return null; }
+  });
   const [autoSave, setAutoSave] = useState(false);
   const autoSaveTimer = useRef(null);
   const [dbxSignedIn, setDbxSignedIn] = useState(false);
@@ -64,6 +68,24 @@ function App() {
     setTimeout(() => setToastMessage(null), 2000);
   };
 
+  const markSeen = useCallback((text) => {
+    setSeenContent(text);
+    try { localStorage.setItem('clipboardSeenContent', text); } catch {}
+  }, []);
+
+  // Poll the Dropbox file so a change made elsewhere (e.g. a Claude Stop hook) shows up here.
+  useEffect(() => {
+    if (!dbxSignedIn) return;
+    const id = setInterval(async () => {
+      if (document.hidden || !window.getDropboxAccessToken || !window.getDropboxAccessToken()) return;
+      try {
+        const content = await window.dropboxDownloadFile(DROPBOX_PATH);
+        if (content) setSavedContent(content);
+      } catch {}
+    }, 5000);
+    return () => clearInterval(id);
+  }, [dbxSignedIn]);
+
   const loadShortcuts = useCallback(async () => {
     if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) return;
     try {
@@ -100,6 +122,7 @@ function App() {
     const trimmed = content.trim();
     if (trimmed) {
       setSavedContent(trimmed);
+      markSeen(trimmed);
       if (!window.getDropboxAccessToken || !window.getDropboxAccessToken()) {
         if (!silent) alert('Sign in to Dropbox first');
         return;
@@ -110,7 +133,7 @@ function App() {
         if (!silent) throw error;
       }
     }
-  }, []);
+  }, [markSeen]);
 
   useEffect(() => {
     if (!autoSave) return;
@@ -166,6 +189,7 @@ function App() {
         : trimmed;
       await window.dropboxUploadFile(DROPBOX_PATH, combined);
       setSavedContent(combined);
+      markSeen(combined);
       setTextboxContent(isMobile ? '' : trimmed);
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus(null), 2000);
@@ -782,12 +806,20 @@ function App() {
 
         {savedContent && (
           <div className="saved-section">
-            <div className="saved-content" onClick={async () => {
+            <div className={'saved-content' + (savedContent !== seenContent ? ' unseen' : '')} onClick={async () => {
               await loadFromDropbox();
               await new Promise(r => setTimeout(r, 200));
               showToast('Copied to clipboard!');
             }} style={{ cursor: 'pointer' }}>{savedContent}</div>
             <div className="saved-actions">
+              <button
+                onClick={() => markSeen(savedContent)}
+                className="go-link-button"
+                disabled={savedContent === seenContent}
+                title="Remove the blue border. It comes back when the Dropbox file changes."
+              >
+                Mark seen
+              </button>
               <button onClick={loadFromDropbox} className="go-link-button">
                 Refresh
               </button>
